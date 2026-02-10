@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="extern">
+      <UniqueIdentifier>{feb2a230-4912-4c7c-b186-909447501af0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="common">
+      <UniqueIdentifier>{ef14c214-f67a-43b6-af43-c884db788bc3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="math">
+      <UniqueIdentifier>{92e1ae69-3656-4d6b-8f51-8f5e8d4d95a8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="renderer">
+      <UniqueIdentifier>{2014c06d-2690-4c21-96e3-d156da9aecab}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="tinyobj_loader.h">
+      <Filter>extern</Filter>
+    </ClCompile>
+    <ClCompile Include="raster.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fps_meter.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="mathlib.h">
+      <Filter>math</Filter>
+    </ClCompile>
+    <ClCompile Include="texture_loader.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="mesh_loader.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="raster.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="fps_meter.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="common.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="mathlib_types.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="mat4.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="mathlib_intrinsics.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="mathlib_common.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="raster_common.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="raster_types.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="texture_loader.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="mesh_loader.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="todo.txt" />
+  </ItemGroup>
+</Project>

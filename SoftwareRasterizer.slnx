@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="SoftwareRasterizer.vcxproj" Id="a6e353a6-801b-4b45-a58a-96ef257d4324" />
+</Solution>
