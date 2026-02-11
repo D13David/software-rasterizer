@@ -40,6 +40,12 @@
     <ClCompile Include="mesh_loader.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
+    <ClCompile Include="thread_pool.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="parallel_for.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="raster.h">
@@ -74,6 +80,12 @@
     </ClInclude>
     <ClInclude Include="mesh_loader.h">
       <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="thread_pool.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="parallel_for.h">
+      <Filter>common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

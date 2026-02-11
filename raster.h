@@ -6,6 +6,7 @@
 #include "mathlib.h"
 
 void srInitialize(const RasterizerDesc& init);
+void srDestroy();
 
 void srSetTextureFilter(TextureFilter filter);
 void srSetTextureView(TextureView texture);
@@ -13,7 +14,7 @@ void srSetTextureView(TextureView texture);
 void srClear(Color color);
 void srDrawPixel(int x, int y, Color color);
 void srDrawLine(int x0, int y0, int x1, int y1, Color color);
-void srDrawTriangleList(const void* data, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj);
+void srDrawTriangleList(const void* data, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
 
 int srInputStreamElementSize(const InputElement* elements, int numElements);
 const InputElement* srInputStreamElementByType(const InputElement* elements, int numElements, InputElementType type);

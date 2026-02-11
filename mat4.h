@@ -4,6 +4,17 @@
 #include "mathlib_common.h"
 #include "mathlib_intrinsics.h"
 
+PJD_INLINE void CopyMatrix(mat4 m1, mat4 out)
+{
+#if defined(__SSE2__)
+    for (int i = 0; i < 4; i++) {
+        _mm_store_ps(out[i], _mm_load_ps(m1[i]));
+    }
+#else
+    memcpy(out, m1, sizeof(mat4));
+#endif
+}
+
 PJD_INLINE void Matrix4Mul(mat4 m1, mat4 m2, mat4 out)
 {
 #if __AVX__

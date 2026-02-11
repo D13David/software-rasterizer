@@ -1,6 +1,11 @@
 #include "raster.h"
 #include "mathlib_intrinsics.h"
 #include "texture_loader.h"
+#include "thread_pool.h"
+#include "parallel_for.h"
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 
 typedef struct RasterContext
 {
@@ -28,6 +33,7 @@ typedef struct ExportVertex
 #define FB_HEIGHT   Ctx.Out.Height
 
 RasterContext Ctx;
+ThreadPoolHandle ThreadPool;
 
 void srInitialize(const RasterizerDesc& init)
 {
@@ -39,6 +45,15 @@ void srInitialize(const RasterizerDesc& init)
         .CB = init.FrameBufferPtr,
         .DB = init.DepthBufferPtr
     };
+
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo(&systemInfo);
+    ThreadPool = ThreadPoolInit(systemInfo.dwNumberOfProcessors, 1024 * 32);
+}
+
+void srDestroy()
+{
+    ThreadPoolDestroy(ThreadPool, ShutdownMode::IMMEDIATE);
 }
 
 void srSetTextureFilter(TextureFilter filter)
@@ -231,68 +246,97 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
     }
 }
 
-void srDrawTriangleList(const void* data, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj)
+typedef struct VertexTransformCommand
 {
-    int stride = srInputStreamElementSize(elements, numInputElements);
+    const void*         Data; 
+    const InputElement* Elements;
+    int                 NumInputElements; 
+    mat4                ProjectionMatrix;
+} VertexTransformCommand;
 
-    for (int i = 0; i < numPrimitives; ++i)
+static void RunVertexTransform(int index, void* context)
+{
+    VertexTransformCommand* command = (VertexTransformCommand*)context;
+
+    int stride = srInputStreamElementSize(command->Elements, command->NumInputElements);
+
+    const InputElement* inputElementPosition = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypePosition);
+    assert(inputElementPosition != NULL);
+    float* pos0 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, index * 3 + 0);
+    float* pos1 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, index * 3 + 1);
+    float* pos2 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, index * 3 + 2);
+
+    vec4 pos[3];
+    Matrix4MulVec3(command->ProjectionMatrix, pos0, 1, pos[0]);
+    Matrix4MulVec3(command->ProjectionMatrix, pos1, 1, pos[1]);
+    Matrix4MulVec3(command->ProjectionMatrix, pos2, 1, pos[2]);
+
+    // FIXME: clip triangle against frustrum
+
+    ClipToScreen(pos[0], FB_WIDTH, FB_HEIGHT, pos[0]);
+    ClipToScreen(pos[1], FB_WIDTH, FB_HEIGHT, pos[1]);
+    ClipToScreen(pos[2], FB_WIDTH, FB_HEIGHT, pos[2]);
+
+    /*const InputElement* inputElementColor = srInputStreamElementByType(elements, NumInputElements, InputElementType::TypeColor);
+    assert(inputElementColor != NULL);
+    const void* col0 = srInputStreamElement(data, *inputElementColor, stride, i * 3 + 0);
+    const void* col1 = srInputStreamElement(data, *inputElementColor, stride, i * 3 + 1);
+    const void* col2 = srInputStreamElement(data, *inputElementColor, stride, i * 3 + 2);
+
+    const float* c[3]{ (float*)(col0),
+                       (float*)(col1),
+                       (float*)(col2) };*/
+
+
+    const InputElement* inputElementTexcoord = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypeTexcoord);
+    assert(inputElementTexcoord != NULL);
+    const void* uv0 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, index * 3 + 0);
+    const void* uv1 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, index * 3 + 1);
+    const void* uv2 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, index * 3 + 2);
+
+    const float* t[3]{ (float*)(uv0),
+                       (float*)(uv1),
+                       (float*)(uv2) };
+
+    ExportVertex verts[3];
+
+    for (int j = 0; j < 3; ++j)
     {
-        const InputElement* inputElementPosition = srInputStreamElementByType(elements, numInputElements, InputElementType::TypePosition);
-        assert(inputElementPosition != NULL);
-        float* pos0 = (float*)srInputStreamElement(data, *inputElementPosition, stride, i * 3 + 0);
-        float* pos1 = (float*)srInputStreamElement(data, *inputElementPosition, stride, i * 3 + 1);
-        float* pos2 = (float*)srInputStreamElement(data, *inputElementPosition, stride, i * 3 + 2);
+        verts[j].ScreenX = (int)pos[j][0];
+        verts[j].ScreenY = (int)pos[j][1];
 
-        vec4 pos[3];
-        Matrix4MulVec3(proj, pos0, 1, pos[0]);
-        Matrix4MulVec3(proj, pos1, 1, pos[1]);
-        Matrix4MulVec3(proj, pos2, 1, pos[2]);
+        verts[j].InvW = 1.0f / pos[j][3];            // 1 / w
+        verts[j].ZOverW = pos[j][2] * verts[j].InvW; // z / w
+        verts[j].UOverW = t[j][0] * verts[j].InvW;   // u / w
+        verts[j].VOverW = t[j][1] * verts[j].InvW;   // v / w
 
-        // FIXME: clip triangle against frustrum
+        /*verts[j].r = c[j][0];
+        verts[j].g = c[j][1];
+        verts[j].b = c[j][2];*/
+    }
 
-        ClipToScreen(pos[0], FB_WIDTH, FB_HEIGHT, pos[0]);
-        ClipToScreen(pos[1], FB_WIDTH, FB_HEIGHT, pos[1]);
-        ClipToScreen(pos[2], FB_WIDTH, FB_HEIGHT, pos[2]);
+    // FIXME: don't call this from here. Threads export transformed vertices and rasterizing is done
+    // on the exported workload. This is here for demo purpose
+    srDrawTriangle(&verts[0], &verts[1], &verts[2]);
+}
 
-        /*const InputElement* inputElementColor = srInputStreamElementByType(elements, numInputElements, InputElementType::TypeColor);
-        assert(inputElementColor != NULL);
-        const void* col0 = srInputStreamElement(data, *inputElementColor, stride, i * 3 + 0);
-        const void* col1 = srInputStreamElement(data, *inputElementColor, stride, i * 3 + 1);
-        const void* col2 = srInputStreamElement(data, *inputElementColor, stride, i * 3 + 2);
-
-        const float* c[3]{ (float*)(col0),
-                           (float*)(col1),
-                           (float*)(col2) };*/
-
-
-        const InputElement* inputElementTexcoord = srInputStreamElementByType(elements, numInputElements, InputElementType::TypeTexcoord);
-        assert(inputElementTexcoord != NULL);
-        const void* uv0 = srInputStreamElement(data, *inputElementTexcoord, stride, i * 3 + 0);
-        const void* uv1 = srInputStreamElement(data, *inputElementTexcoord, stride, i * 3 + 1);
-        const void* uv2 = srInputStreamElement(data, *inputElementTexcoord, stride, i * 3 + 2);
-
-        const float* t[3]{ (float*)(uv0),
-                           (float*)(uv1),
-                           (float*)(uv2) };
-
-        ExportVertex verts[3];
-
-        for (int j = 0; j < 3; ++j) 
-        {
-            verts[j].ScreenX = (int)pos[j][0];
-            verts[j].ScreenY = (int)pos[j][1];
-
-            verts[j].InvW = 1.0f / pos[j][3];            // 1 / w
-            verts[j].ZOverW = pos[j][2] * verts[j].InvW; // z / w
-            verts[j].UOverW = t[j][0] * verts[j].InvW;   // u / w
-            verts[j].VOverW = t[j][1] * verts[j].InvW;   // v / w
-
-            /*verts[j].r = c[j][0];
-            verts[j].g = c[j][1];
-            verts[j].b = c[j][2];*/
+void srDrawTriangleList(const void* data, const InputElement* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
+{
+    VertexTransformCommand command = {
+        .Data = data,
+        .Elements = elements,
+        .NumInputElements = numInputElements
+    };
+    CopyMatrix(ProjectionMatrix, command.ProjectionMatrix);
+    if (parallel)
+    {
+        ParallelFor(ThreadPool, 0, numPrimitives, 32, &RunVertexTransform, &command);
+    }
+    else
+    {
+        for (int i = 0; i < numPrimitives; ++i) {
+            RunVertexTransform(i, &command);
         }
-
-        srDrawTriangle(&verts[0], &verts[1], &verts[2]);
     }
 }
 

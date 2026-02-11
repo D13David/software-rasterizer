@@ -52,7 +52,7 @@ static void DrawMesh(const Mesh* mesh, float tx, float ty, float tz)
 
     srSetTextureView(mesh->texture);
 
-    srDrawTriangleList(Gmesh.verts, Gmesh.inputDesc, Gmesh.numInputElements, Gmesh.numTris, WorldViewProj);
+    srDrawTriangleList(Gmesh.verts, Gmesh.inputDesc, Gmesh.numInputElements, Gmesh.numTris, WorldViewProj, true);
 }
 
 static void DrawFrame()
