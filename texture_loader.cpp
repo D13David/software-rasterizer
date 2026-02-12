@@ -101,6 +101,16 @@ static bool GenerateCheckerboardTexture(TextureView* texture, int width, int hei
     return true;
 }
 
+static void ConvertBGRAToRGBA(uint32_t* data, int length)
+{
+    for (int i = 0; i < length; ++i) 
+    {
+        data[i] = (data[i] & 0xFF00FF00) | 
+                  ((data[i] & 0x00FF0000) >> 16) |
+                  ((data[i] & 0x000000FF) << 16);
+    }
+}
+
 TextureView LoadCheckerboardTexture()
 {
     // TODO: memory is never freed
@@ -109,6 +119,27 @@ TextureView LoadCheckerboardTexture()
         GenerateCheckerboardTexture(&GCheckerBoardTexture, 256, 256, 8);
     }
     return GCheckerBoardTexture;
+}
+
+TextureView LoadColorTexture(Color color)
+{
+    TextureView result = {
+        .Width = 32,
+        .Height = 32
+    };
+
+    Color* buffer = (Color*)malloc(result.Width * result.Height * sizeof(Color));
+    if (!buffer) {
+        return GNullTexture;
+    }
+
+    for (int i = 0; i < result.Width * result.Height; ++i) {
+        buffer[i] = color;
+    }
+
+    result.Data = buffer;
+
+    return result;
 }
 
 TextureView LoadTexture(const char* path)
@@ -120,6 +151,8 @@ TextureView LoadTexture(const char* path)
     {
         return GNullTexture;
     }
+
+    ConvertBGRAToRGBA((uint32_t*)result.Data, result.Width * result.Height);
 
     return result;
 }

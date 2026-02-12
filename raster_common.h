@@ -5,9 +5,9 @@
 
 #define RGBA(r, g, b, a) \
     ( ((uint32_t)(a) << 24) | \
-      ((uint32_t)(r) << 16) | \
+      ((uint32_t)(b) << 16) | \
       ((uint32_t)(g) << 8)  | \
-      ((uint32_t)(b)) )
+      ((uint32_t)(r)) )
 
 #define COLOR(r, g, b) \
     RGBA( (uint8_t)((r) * 255.0f), \

@@ -87,6 +87,9 @@
     <ClInclude Include="parallel_for.h">
       <Filter>common</Filter>
     </ClInclude>
+    <ClInclude Include="thirteen.h">
+      <Filter>extern</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="todo.txt" />

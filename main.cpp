@@ -5,6 +5,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include "thirteen.h"
+
 #include "mathlib.h"
 #include "mesh_loader.h"
 #include "raster.h"
@@ -15,11 +17,6 @@
 #define FB_WIDTH 1280
 #define FB_HEIGHT 720
 
-static HBITMAP  hBitmap = nullptr;
-static HDC      hMemDC = nullptr;
-static HWND     hWnd = nullptr;
-void*           FrameBuffer;
-void*           DepthBuffer;
 Mesh Gmesh, Gmesh1;
 
 static void DrawMesh(const Mesh* mesh, float tx, float ty, float tz)
@@ -69,89 +66,21 @@ static void DrawFrame()
     FPSMeterDraw(0, FB_HEIGHT - 1 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
 }
 
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-void Initialize(HINSTANCE hInst)
+int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
-    WNDCLASS wc = {};
-    wc.lpfnWndProc = WndProc;
-    wc.hInstance = hInst;
-    wc.lpszClassName = L"DIBFramebufferClass";
+    uint8_t* frameBuffer = Thirteen::Init(FB_WIDTH, FB_HEIGHT);
 
-    RegisterClass(&wc);
+    float* depthBuffer = (float*)malloc(FB_WIDTH * FB_HEIGHT * sizeof(float));
 
-    hWnd = CreateWindowEx(
-        0,
-        wc.lpszClassName,
-        L"DIB Section Framebuffer",
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        FB_WIDTH + 16, FB_HEIGHT + 39,
-        NULL, NULL,
-        hInst,
-        NULL
-    );
-}
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    switch (msg)
-    {
-    case WM_CREATE:
-    {
-        BITMAPINFO bmi = {};
-        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        bmi.bmiHeader.biWidth = FB_WIDTH;
-        bmi.bmiHeader.biHeight = -FB_HEIGHT; // top-down
-        bmi.bmiHeader.biPlanes = 1;
-        bmi.bmiHeader.biBitCount = 32;
-        bmi.bmiHeader.biCompression = BI_RGB;
-
-        HDC hdc = GetDC(hwnd);
-
-        hBitmap = CreateDIBSection(
-            hdc,
-            &bmi,
-            DIB_RGB_COLORS,
-            (void**)&FrameBuffer,
-            NULL,
-            0
-        );
-
-        hMemDC = CreateCompatibleDC(hdc);
-        SelectObject(hMemDC, hBitmap);
-        ReleaseDC(hwnd, hdc);
-
-        DepthBuffer = (float*)malloc(FB_WIDTH * FB_HEIGHT * sizeof(float));
-
-        srInitialize({
+    srInitialize({
             .BufferDesc = {
                 .Width = FB_WIDTH,
                 .Height = FB_HEIGHT
             },
-            .FrameBufferPtr = FrameBuffer,
-            .DepthBufferPtr = DepthBuffer
+            .FrameBufferPtr = frameBuffer,
+            .DepthBufferPtr = depthBuffer
 
         });
-
-        return 0;
-    }
-
-    case WM_DESTROY:
-        DeleteDC(hMemDC);
-        DeleteObject(hBitmap);
-        PostQuitMessage(0);
-        free(DepthBuffer);
-        return 0;
-    }
-
-    return DefWindowProc(hwnd, msg, wParam, lParam);
-}
-
-int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
-{
-    Initialize(GetModuleHandleA(NULL));
 
     if (!LoadMeshFromFile("./meshes/Base mesh.obj", &Gmesh)) 
     {
@@ -163,23 +92,17 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
     while (true)
     {
-        MSG msg;
-        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-        {
-            if (msg.message == WM_QUIT) {
-                goto exit;
-            }
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-
-        
         DrawFrame();
 
-        HDC hdc = GetDC(hWnd);
-        BitBlt(hdc, 0, 0, FB_WIDTH, FB_HEIGHT, hMemDC, 0, 0, SRCCOPY);
-        ReleaseDC(hWnd, hdc);
+        if (!Thirteen::Render()) {
+            break;
+        }
     }
 exit:
+    if (depthBuffer) {
+        free(depthBuffer);
+    }
+    Thirteen::Shutdown();
+
     return 0;
 }
