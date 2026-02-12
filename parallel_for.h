@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-typedef void (*ParallelForFunc)(int index, void* context);
+typedef void (*ParallelForFunc)(int start, int end, void* context);
 
 void ParallelFor(ThreadPoolHandle pool, int begin, int end, int grainSize, ParallelForFunc func, void* userContext);
 

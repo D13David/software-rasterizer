@@ -31,9 +31,7 @@ static void ParallelForWorker(void* arg)
             end = context->End;
         }
 
-        for (int i = start; i < end; ++i) {
-            context->Func(i, context->UserContext);
-        }
+        context->Func(start, end, context->UserContext);
     }
 }
 

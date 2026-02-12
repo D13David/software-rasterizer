@@ -46,6 +46,9 @@
     <ClCompile Include="parallel_for.cpp">
       <Filter>common</Filter>
     </ClCompile>
+    <ClCompile Include="export_buffer.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="raster.h">
@@ -89,6 +92,9 @@
     </ClInclude>
     <ClInclude Include="thirteen.h">
       <Filter>extern</Filter>
+    </ClInclude>
+    <ClInclude Include="export_buffer.h">
+      <Filter>common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
