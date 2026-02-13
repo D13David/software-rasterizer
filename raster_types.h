@@ -50,7 +50,9 @@ struct TextureView
 {
     int     Width;
     int     Height;
+    int     MipLevels;
     void*   Data;
+    size_t* MipOffsets;
 };
 
 #endif // PJD_RASTER_TYPES_H

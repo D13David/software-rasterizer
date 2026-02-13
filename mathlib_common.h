@@ -20,6 +20,22 @@ PJD_INLINE void SinCos(float value, float* s, float* c)
     *c = cosf(value);
 }
 
+PJD_INLINE float Clamp(float value, float min, float max)
+{
+    return fminf(fmaxf(value, min), max);
+}
+
+PJD_INLINE float Lerp(float a, float b, float t) 
+{ 
+    return a * (1.0f - t) + b * t; 
+}
+
+PJD_INLINE float Log2Fast(float x)
+{
+    union { float f; uint32_t i; } u = { x };
+    return (float)((int)(u.i >> 23) - 127);
+}
+
 //=============================================================================
 // Affine Transformation Functionality
 //=============================================================================

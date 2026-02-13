@@ -1,5 +1,9 @@
 #include "texture_loader.h"
 #include "common.h"
+#include "mathlib_common.h"
+
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize2.h"
 
 TextureView GNullTexture;
 TextureView GCheckerBoardTexture;
@@ -76,6 +80,117 @@ cleanup:
     return result;
 }
 
+static void WriteToTgaFile(const char* filename, uint32_t width, uint32_t height, uint8_t* dataBGRA, uint8_t dataChannels = 4, uint8_t fileChannels = 3)
+{
+    FILE* fp = NULL;
+    fopen_s(&fp, filename, "wb");
+    if (fp == NULL) return;
+
+    uint8_t header[18] = { 0,0,2,0,0,0,0,0,0,0,0,0, (uint8_t)(width % 256), (uint8_t)(width / 256), (uint8_t)(height % 256), (uint8_t)(height / 256), (uint8_t)(fileChannels * 8), 0x20 };
+    fwrite(&header, 18, 1, fp);
+
+    for (uint32_t i = 0; i < width * height; i++)
+    {
+        for (uint32_t b = 0; b < fileChannels; b++)
+        {
+            fputc(dataBGRA[(i * dataChannels) + (b % dataChannels)], fp);
+        }
+    }
+    fclose(fp);
+}
+
+static void ConvertBGRAToRGBA(uint32_t* data, int length)
+{
+    for (int i = 0; i < length; ++i)
+    {
+        data[i] = (data[i] & 0xFF00FF00) |
+            ((data[i] & 0x00FF0000) >> 16) |
+            ((data[i] & 0x000000FF) << 16);
+    }
+}
+
+static uint32_t ComputeMipMapSize(uint32_t width, uint32_t height, uint32_t bpp, uint32_t minDimension, size_t* maxLevels)
+{
+    uint32_t size = 0;
+    uint32_t levels = 1;
+    for (; width >= minDimension && height >= minDimension; )
+    {
+        size += width * height * bpp;
+        levels++;
+        width /= 2;
+        height /= 2;
+    }
+    if (maxLevels) *maxLevels = levels;
+    return size;
+}
+
+static Color mipLevelDebugValues[20] = {
+    COLOR(1.00, 0.00, 0.00),  // Red
+    COLOR(0.00, 1.00, 0.00),  // Green
+    COLOR(0.00, 0.00, 1.00),  // Blue
+    COLOR(1.00, 1.00, 0.00),  // Yellow
+    COLOR(1.00, 0.00, 1.00),  // Magenta
+    COLOR(0.00, 1.00, 1.00),  // Cyan
+    COLOR(1.00, 0.50, 0.00),  // Orange
+    COLOR(0.50, 0.00, 1.00),  // Purple / Violet
+    COLOR(0.00, 0.50, 1.00),  // Azure
+    COLOR(0.50, 1.00, 0.00),  // Chartreuse
+    COLOR(1.00, 0.00, 0.50),  // Rose / Pink
+    COLOR(0.50, 0.50, 0.50),  // Gray (50%)
+    COLOR(0.25, 0.25, 1.00),  // Periwinkle
+    COLOR(1.00, 0.75, 0.00),  // Amber
+    COLOR(0.75, 0.00, 1.00),  // Bright Violet
+    COLOR(0.00, 0.75, 1.00),  // Sky Blue
+    COLOR(0.75, 1.00, 0.00),  // Lime
+    COLOR(1.00, 0.25, 0.25),  // Light Red / Salmon
+    COLOR(0.25, 1.00, 0.25),  // Light Green
+    COLOR(0.25, 0.25, 0.25),  // Dark Gray
+};
+
+static void GenerateMipMaps(uint8_t* data, TextureView& texture)
+{
+    assert(texture.Data == NULL && "texture already initialized...");
+    
+    size_t maxMipMapLevels;
+    size_t bufferSize = ComputeMipMapSize(texture.Width, texture.Height, 4, 1, &maxMipMapLevels);
+
+    texture.MipOffsets = (size_t*)calloc(maxMipMapLevels, sizeof(size_t));
+    assert(texture.MipOffsets!= NULL);
+
+    uint8_t* buffer = (uint8_t*)malloc(bufferSize);
+    assert(buffer != NULL);
+
+    size_t w = texture.Width;
+    size_t h = texture.Height;
+
+    memcpy(buffer, data, w * h * 4);
+    texture.MipOffsets[0] = 0;
+
+    uint8_t* prevMipMap = buffer;
+
+    for (size_t level = 1; level < maxMipMapLevels; ++level)
+    {
+        uint8_t* nextMipMap = prevMipMap + (w * h * 4);
+
+#define DEBUG_MIPMAPS 0
+#if DEBUG_MIPMAPS
+        for (int i = 0; i < (w / 2 * h / 2); ++i) {
+            ((Color*)nextMipMap)[i] = mipLevelDebugValues[level];
+        }
+#else
+        stbir_resize(prevMipMap, w, h, 0, nextMipMap, w / 2, h / 2, 0, STBIR_RGBA, STBIR_TYPE_UINT8, STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT);
+#endif
+        w /= 2; h /= 2;
+
+        texture.MipOffsets[level] = nextMipMap - buffer;
+
+        prevMipMap = nextMipMap;
+    }
+
+    texture.MipLevels = maxMipMapLevels;
+    texture.Data = buffer;
+}
+
 static bool GenerateCheckerboardTexture(TextureView* texture, int width, int height, int checkSize)
 {
     Color* buffer = (Color*)malloc(width * height * sizeof(Color));
@@ -97,18 +212,9 @@ static bool GenerateCheckerboardTexture(TextureView* texture, int width, int hei
     texture->Width = width;
     texture->Height = height;
     texture->Data = buffer;
+    texture->MipLevels = 1;
 
     return true;
-}
-
-static void ConvertBGRAToRGBA(uint32_t* data, int length)
-{
-    for (int i = 0; i < length; ++i) 
-    {
-        data[i] = (data[i] & 0xFF00FF00) | 
-                  ((data[i] & 0x00FF0000) >> 16) |
-                  ((data[i] & 0x000000FF) << 16);
-    }
 }
 
 TextureView LoadCheckerboardTexture()
@@ -138,6 +244,7 @@ TextureView LoadColorTexture(Color color)
     }
 
     result.Data = buffer;
+    result.MipLevels = 1;
 
     return result;
 }
@@ -146,13 +253,23 @@ TextureView LoadTexture(const char* path)
 {
     // TODO: add some proper resource management here
 
-    TextureView result;
-    if (!LoadTextureFromFileTGA(path, result.Width, result.Height, result.Data))
+    int width, height;
+    void* loadingBuffer;
+    if (!LoadTextureFromFileTGA(path, width, height, loadingBuffer))
     {
         return GNullTexture;
     }
 
-    ConvertBGRAToRGBA((uint32_t*)result.Data, result.Width * result.Height);
+    ConvertBGRAToRGBA((uint32_t*)loadingBuffer, width * height);
+
+    TextureView result = {
+        .Width = width,
+        .Height = height,
+    };
+
+    GenerateMipMaps((uint8_t*)loadingBuffer, result);
+
+    free(loadingBuffer);
 
     return result;
 }

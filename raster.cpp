@@ -151,13 +151,23 @@ static PJD_INLINE void ComputeAABB(int x0, int y0, int x1, int y1, int x2, int y
     int maxx = max(max(x0, x1), x2);
     int miny = min(min(y0, y1), y2);
     int maxy = max(max(y0, y1), y2);
-    out[0] = max(minx, 0);
-    out[1] = max(miny, 0);
-    out[2] = min(maxx, FB_WIDTH - 1);
-    out[3] = min(maxy, FB_HEIGHT - 1);
+
+    // Floor min to nearest multiple of 2, clamp to framebuffer
+    int xmin = max(minx & ~1, 0);
+    int ymin = max(miny & ~1, 0);
+
+    // Ceil max to nearest multiple of 2, clamp to framebuffer
+    int xmax = min((maxx + 1) & ~1, FB_WIDTH - 1);
+    int ymax = min((maxy + 1) & ~1, FB_HEIGHT - 1);
+
+    // Output
+    out[0] = xmin;
+    out[1] = ymin;
+    out[2] = xmax;
+    out[3] = ymax;
 }
 
-Color srSampleTexture(int sx, int sy, float u, float v)
+Color srSampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
 {
     TextureView texture = Ctx.Texture;
 
@@ -180,11 +190,16 @@ Color srSampleTexture(int sx, int sy, float u, float v)
 
     u = u - floorf(u);
     v = v - floorf(v);
-    
-    int x = (int)(u * texture.Width);
-    int y = (int)(v * texture.Height);
 
-    return ((Color*)texture.Data)[y * texture.Width + x];
+    int mip = (int)(mipLevel + 0.5);
+    uint32_t mipWidth = max(1u, texture.Width >> mip);
+    uint32_t mipHeight = max(1u, texture.Height >> mip);
+
+    int x = (int)(u * mipWidth);
+    int y = (int)(v * mipHeight);
+
+    Color* mipData = (Color*)(((uint8_t*)texture.Data) + texture.MipOffsets[mip]);
+    return mipData[y * mipWidth + x];
 }
 
 static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2)
@@ -199,6 +214,7 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
     }
 
     float invArea = 1.0f / area;
+
     vec4i bounds;
     ComputeAABB(x0, y0, x1, y1, x2, y2, bounds);
 
@@ -206,65 +222,80 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
     int A12 = y1 - y2, B12 = x2 - x1;
     int A20 = y2 - y0, B20 = x0 - x2;
 
-    /*int px = bounds[0] + 0.5f;
-    int py = bounds[1] + 0.5f;*/
-
     int cy0 = Edge(x1, y1, x2, y2, bounds[0], bounds[1]);
     int cy1 = Edge(x2, y2, x0, y0, bounds[0], bounds[1]);
     int cy2 = Edge(x0, y0, x1, y1, bounds[0], bounds[1]);
 
-    for (int y = bounds[1]; y <= bounds[3]; ++y)
+    float* depthBuffer = (float*)Ctx.Out.DB;
+
+    for (int y = bounds[1]; y <= bounds[3]; y += 2)
     {
-        int cx0 = cy0;
-        int cx1 = cy1;
-        int cx2 = cy2;
+        int cx0Row = cy0;
+        int cx1Row = cy1;
+        int cx2Row = cy2;
 
-        for (int x = bounds[0]; x <= bounds[2]; ++x)
+        for (int x = bounds[0]; x <= bounds[2]; x += 2)
         {
-            if (cx0 >= 0 && cx1 >= 0 && cx2 >= 0)
+            int cx0[4] = { cx0Row, cx0Row + A12, cx0Row + B12, cx0Row + A12 + B12 };
+            int cx1[4] = { cx1Row, cx1Row + A20, cx1Row + B20, cx1Row + A20 + B20 };
+            int cx2[4] = { cx2Row, cx2Row + A01, cx2Row + B01, cx2Row + A01 + B01 };
+
+            float w0[4], w1[4], w2[4];
+            float zndc[4], u[4], v[4];
+            int   px[4], py[4];
+
+            // precompute interpolants for quad
+            for (int i = 0; i < 4; ++i)
             {
-                float w0 = cx0 * invArea;
-                float w1 = cx1 * invArea;
-                float w2 = cx2 * invArea;
+                px[i] = x + (i & 1);
+                py[i] = y + (i >> 1);
 
-                float depth = 1.0f / (w0 * v0->InvW + w1 * v1->InvW + w2 * v2->InvW);
+                w0[i] = cx0[i] * invArea;
+                w1[i] = cx1[i] * invArea;
+                w2[i] = cx2[i] * invArea;
 
-                float z_ndc = (w0 * v0->ZOverW + 
-                               w1 * v1->ZOverW + 
-                               w2 * v2->ZOverW) * depth;
+                float depth = 1.0f / (w0[i] * v0->InvW + w1[i] * v1->InvW + w2[i] * v2->InvW);
+                zndc[i] = (w0[i] * v0->ZOverW + w1[i] * v1->ZOverW + w2[i] * v2->ZOverW) * depth;
+                u[i]    = (w0[i] * v0->UOverW + w1[i] * v1->UOverW + w2[i] * v2->UOverW) * depth;
+                v[i]    = (w0[i] * v0->VOverW + w1[i] * v1->VOverW + w2[i] * v2->VOverW) * depth;
+            }
 
-                float* depthBuffer = (float*)Ctx.Out.DB;
-                if (z_ndc < depthBuffer[y * FB_WIDTH + x])
+            // calculate u/v derivatives and mip-level
+            float dudx = ((u[1] + u[3]) - (u[0] + u[2])) * 0.5f;
+            float dudy = ((u[2] + u[3]) - (u[0] + u[1])) * 0.5f;
+            float dvdx = ((v[1] + v[3]) - (v[0] + v[2])) * 0.5f;
+            float dvdy = ((v[2] + v[3]) - (v[0] + v[1])) * 0.5f;
+
+            float dudx2 = dudx * dudx;
+            float dudy2 = dudy * dudy;
+            float dvdx2 = dvdx * dvdx;
+            float dvdy2 = dvdy * dvdy;
+
+            float rho2 = fmaxf(dudx2 + dvdx2, dudy2 + dvdy2);
+            float mipLevel = 0.5f * Log2Fast(rho2 * Ctx.Texture.Width * Ctx.Texture.Width);
+            mipLevel = Clamp(mipLevel, 0.0f, (float)Ctx.Texture.MipLevels - 1);
+
+            for (int i = 0; i < 4; ++i)
+            {
+                if (cx0[i] >= 0 && cx1[i] >= 0 && cx2[i] >= 0)
                 {
-                    depthBuffer[y * FB_WIDTH + x] = z_ndc;
-
-                    float u = (w0 * v0->UOverW +
-                               w1 * v1->UOverW +
-                               w2 * v2->UOverW) * depth;
-
-                    float v = (w0 * v0->VOverW +
-                               w1 * v1->VOverW +
-                               w2 * v2->VOverW) * depth;
-
-                    Color Color = srSampleTexture(x, y, u, v);
-
-                    // interpolate Color over triangle
-                    /*float r = w0 * v0->r + w1 * v1->r + w2 * v2->r;
-                    float g = w0 * v0->g + w1 * v1->g + w2 * v2->g;
-                    float b = w0 * v0->b + w1 * v1->b + w2 * v2->b;*/
-
-                    srDrawPixel(x, y, Color);
+                    if (zndc[i] < depthBuffer[py[i] * FB_WIDTH + px[i]])
+                    {
+                        depthBuffer[py[i] * FB_WIDTH + px[i]] = zndc[i];
+                        Color color = srSampleTextureLod(px[i], py[i], u[i], v[i], mipLevel);
+                        srDrawPixel(px[i], py[i], color);
+                    }
                 }
             }
 
-            cx0 += A12;
-            cx1 += A20;
-            cx2 += A01;
+            cx0Row += 2 * A12;
+            cx1Row += 2 * A20;
+            cx2Row += 2 * A01;
         }
 
-        cy0 += B12;
-        cy1 += B20;
-        cy2 += B01;
+        cy0 += 2 * B12;
+        cy1 += 2 * B20;
+        cy2 += 2 * B01;
     }
 }
 
