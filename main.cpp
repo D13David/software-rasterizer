@@ -21,6 +21,7 @@
 
 Mesh* Gmesh;
 DWORD LastTime;
+float DeltaTime;
 
 static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 {
@@ -29,7 +30,7 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
     CreateMatrixTransform(tx, ty, tz, ObjectTransform);
 
     static float angle = 180;
-    angle += 0.5f;
+    angle += 45 * DeltaTime;
     if (angle > 360.0f) angle -= 360.0f;
 
     /*mat4_t ObjectRotateX;
@@ -69,10 +70,10 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
     }
 }
 
-static void DrawFrame(float deltaTime)
+static void DrawFrame()
 {
     static float frame = 0;
-    frame += deltaTime * 10;
+    frame += DeltaTime * 10;
     UpdateGetFrame(Gmesh, &Gmesh->AnimSeqs[47], frame);
 
     srClear(RGB(0, 0, 0));
@@ -132,10 +133,10 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
     while (true)
     {
         DWORD currentTime = GetTickCount();
-        float deltaTime = (currentTime - LastTime) / 1000.0f;
+        DeltaTime = (currentTime - LastTime) / 1000.0f;
         LastTime = currentTime;
 
-        DrawFrame(deltaTime);
+        DrawFrame();
 
         if (!Thirteen::Render()) {
             break;
