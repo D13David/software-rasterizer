@@ -17,6 +17,9 @@
     <Filter Include="renderer">
       <UniqueIdentifier>{2014c06d-2690-4c21-96e3-d156da9aecab}</UniqueIdentifier>
     </Filter>
+    <Filter Include="io">
+      <UniqueIdentifier>{7042fb50-b5bb-414d-a321-0c25456d7761}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="tinyobj_loader.h">
@@ -48,6 +51,12 @@
     </ClCompile>
     <ClCompile Include="export_buffer.cpp">
       <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="mesh.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="uarch_loader.cpp">
+      <Filter>io</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -98,6 +107,12 @@
     </ClInclude>
     <ClInclude Include="stb_image_resize2.h">
       <Filter>extern</Filter>
+    </ClInclude>
+    <ClInclude Include="mesh.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="uarch_loader.h">
+      <Filter>io</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

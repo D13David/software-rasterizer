@@ -211,8 +211,10 @@ static bool GenerateCheckerboardTexture(TextureView* texture, int width, int hei
 
     texture->Width = width;
     texture->Height = height;
-    texture->Data = buffer;
-    texture->MipLevels = 1;
+    
+    GenerateMipMaps((uint8_t*)buffer, *texture);
+
+    free(buffer);
 
     return true;
 }
@@ -243,8 +245,9 @@ TextureView LoadColorTexture(Color color)
         buffer[i] = color;
     }
 
-    result.Data = buffer;
-    result.MipLevels = 1;
+    GenerateMipMaps((uint8_t*)buffer, result);
+
+    free(buffer);
 
     return result;
 }

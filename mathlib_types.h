@@ -3,6 +3,7 @@
 
 #include "common.h"
 
+typedef int                 vec3i[3];
 typedef int                 vec4i[4];
 
 typedef float               vec2[2];

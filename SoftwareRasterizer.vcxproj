@@ -132,6 +132,7 @@
     <ClCompile Include="export_buffer.cpp" />
     <ClCompile Include="fps_meter.cpp" />
     <ClCompile Include="mathlib.h" />
+    <ClCompile Include="mesh.cpp" />
     <ClCompile Include="mesh_loader.cpp" />
     <ClCompile Include="parallel_for.cpp" />
     <ClCompile Include="raster.cpp" />
@@ -139,6 +140,7 @@
     <ClCompile Include="texture_loader.cpp" />
     <ClCompile Include="thread_pool.cpp" />
     <ClCompile Include="tinyobj_loader.h" />
+    <ClCompile Include="uarch_loader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
@@ -148,6 +150,7 @@
     <ClInclude Include="mathlib_common.h" />
     <ClInclude Include="mathlib_intrinsics.h" />
     <ClInclude Include="mathlib_types.h" />
+    <ClInclude Include="mesh.h" />
     <ClInclude Include="mesh_loader.h" />
     <ClInclude Include="parallel_for.h" />
     <ClInclude Include="raster.h" />
@@ -157,6 +160,7 @@
     <ClInclude Include="texture_loader.h" />
     <ClInclude Include="thirteen.h" />
     <ClInclude Include="thread_pool.h" />
+    <ClInclude Include="uarch_loader.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="todo.txt" />

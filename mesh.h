@@ -1,0 +1,50 @@
+#ifndef PJD_MESH_H
+#define PJD_MESH_H
+
+#include "raster_types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct Surface
+{
+    uint16_t*   IndexBuffer;
+    uint16_t    NumPrimitives;
+    TextureView Texture;
+} Surface;
+
+typedef struct MeshAnimSeq
+{
+    uint32_t    Name;
+    uint32_t    StartFrame;
+    uint32_t    NumFrames;
+    float       Rate;
+};
+
+typedef struct Mesh 
+{
+    void*        VertexBuffer;
+    uint32_t     NumVertices;
+    Surface*     Surfaces;
+    uint16_t     NumSurfaces;
+    MeshAnimSeq* AnimSeqs;
+    uint16_t     NumAnimSeqs;
+
+    // FIXME: detach this from mesh
+    InputElement InputDesc[3];
+    int          NumInputElements;
+
+    uint32_t     NumVertsPerFrame;
+    void*        FrameCache;
+} Mesh;
+
+Mesh* MeshCreate(uint8_t vertexSize, uint32_t numVertices, uint32_t numSurfaces);
+void MeshFree(Mesh* mesh);
+void UpdateGetFrame(Mesh* mesh, const MeshAnimSeq* anim, float frame);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // PJD_MESH_H

@@ -14,7 +14,7 @@ void srSetTextureView(TextureView texture);
 void srClear(Color color);
 void srDrawPixel(int x, int y, Color color);
 void srDrawLine(int x0, int y0, int x1, int y1, Color color);
-void srDrawTriangleList(const void* data, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
+void srDrawTriangleList(const void* data, const uint16_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
 
 int srInputStreamElementSize(const InputElement* elements, int numElements);
 const InputElement* srInputStreamElementByType(const InputElement* elements, int numElements, InputElementType type);

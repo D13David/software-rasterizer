@@ -2,18 +2,10 @@
 #define PJD_MESH_LOADER_H
 
 #include "raster.h"
+#include "mesh.h"
 
-typedef struct Mesh
-{
-    float* verts;
-    int numTris;
-    InputElement inputDesc[3];
-    int numInputElements;
-    TextureView texture;
-} Mesh;
-
-int GenerateMeshTriangle(Mesh* mesh);
+int GenerateMeshTriangle(Mesh** mesh);
 int GenerateMeshQuad(Mesh* mesh);
-int LoadMeshFromFile(const char* filename, Mesh* mesh);
+int LoadMeshFromFile(const char* filename, Mesh** outputMesh);
 
 #endif // PJD_MESH_LOADER_H

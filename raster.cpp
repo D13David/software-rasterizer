@@ -32,7 +32,8 @@ typedef struct ExportVertex
 
 typedef struct VertexTransformCommand
 {
-    const void* Data;
+    const void*         Data;
+    const uint16_t*     Indices;
     const InputElement* Elements;
     int                 NumInputElements;
     mat4                ProjectionMatrix;
@@ -314,9 +315,19 @@ static void RunVertexTransform(int start, int end, void* context)
 
         const InputElement* inputElementPosition = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypePosition);
         assert(inputElementPosition != NULL);
-        float* pos0 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, index * 3 + 0);
-        float* pos1 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, index * 3 + 1);
-        float* pos2 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, index * 3 + 2);
+        float* pos0 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 0]);
+        float* pos1 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 1]);
+        float* pos2 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 2]);
+
+        const InputElement* inputElementTexcoord = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypeTexcoord);
+        assert(inputElementTexcoord != NULL);
+        const void* uv0 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 0]);
+        const void* uv1 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 1]);
+        const void* uv2 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 2]);
+
+        const float* t[3]{ (float*)(uv0),
+                           (float*)(uv1),
+                           (float*)(uv2) };
 
         vec4 pos[3];
         Matrix4MulVec3(command->ProjectionMatrix, pos0, 1, pos[0]);
@@ -328,16 +339,6 @@ static void RunVertexTransform(int start, int end, void* context)
         ClipToScreen(pos[0], FB_WIDTH, FB_HEIGHT, pos[0]);
         ClipToScreen(pos[1], FB_WIDTH, FB_HEIGHT, pos[1]);
         ClipToScreen(pos[2], FB_WIDTH, FB_HEIGHT, pos[2]);
-
-        const InputElement* inputElementTexcoord = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypeTexcoord);
-        assert(inputElementTexcoord != NULL);
-        const void* uv0 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, index * 3 + 0);
-        const void* uv1 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, index * 3 + 1);
-        const void* uv2 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, index * 3 + 2);
-
-        const float* t[3]{ (float*)(uv0),
-                           (float*)(uv1),
-                           (float*)(uv2) };
 
         for (int j = 0; j < 3; ++j)
         {
@@ -367,10 +368,11 @@ static void RunRasterizeTriangles(int start, int end, void* context)
     }
 }
 
-void srDrawTriangleList(const void* data, const InputElement* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
+void srDrawTriangleList(const void* data, const uint16_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
 {
     VertexTransformCommand command = {
         .Data = data,
+        .Indices = indices,
         .Elements = elements,
         .NumInputElements = numInputElements
     };

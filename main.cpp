@@ -9,24 +9,27 @@
 
 #include "mathlib.h"
 #include "mesh_loader.h"
+#include "texture_loader.h"
 #include "raster.h"
 #include "fps_meter.h"
+#include "uarch_loader.h"
 
 #define FPS_METER_WIDTH 200
 #define FPS_METER_HEIGHT 70
 #define FB_WIDTH 1280
 #define FB_HEIGHT 720
 
-Mesh Gmesh, Gmesh1;
+Mesh* Gmesh;
+DWORD LastTime;
 
-static void DrawMesh(const Mesh* mesh, float tx, float ty, float tz)
+static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 {
     // object transform
     mat4 ObjectTransform;
     CreateMatrixTransform(tx, ty, tz, ObjectTransform);
 
     static float angle = 180;
-    angle += 0.05f;
+    angle += 0.5f;
     if (angle > 360.0f) angle -= 360.0f;
 
     /*mat4_t ObjectRotateX;
@@ -41,26 +44,41 @@ static void DrawMesh(const Mesh* mesh, float tx, float ty, float tz)
 
     //// projection
     mat4 ProjectionMat;
-    CreateMatrixPerspectiveFovLH(60.0f, FB_WIDTH / (float)FB_HEIGHT, 0.1f, 200.0f, ProjectionMat);
+    CreateMatrixPerspectiveFovLH(60.0f, FB_WIDTH / (float)FB_HEIGHT, 0.1f, 2000.0f, ProjectionMat);
     
     // world view projection
     mat4 WorldViewProj;
     Matrix4Mul(WorldMat, ProjectionMat, WorldViewProj);
 
-    srSetTextureView(mesh->texture);
+    for (int i = 0; i < mesh->NumSurfaces; ++i)
+    {
+        const Surface* surface = &mesh->Surfaces[i];
 
-    srDrawTriangleList(Gmesh.verts, Gmesh.inputDesc, Gmesh.numInputElements, Gmesh.numTris, WorldViewProj, true);
+        srSetTextureView(surface->Texture);
+
+        srDrawTriangleList
+        (
+            Gmesh->FrameCache, 
+            surface->IndexBuffer,
+            Gmesh->InputDesc, 
+            Gmesh->NumInputElements, 
+            surface->NumPrimitives, 
+            WorldViewProj, 
+            true
+        );
+    }
 }
 
-static void DrawFrame()
+static void DrawFrame(float deltaTime)
 {
+    static float frame = 0;
+    frame += deltaTime * 10;
+    UpdateGetFrame(Gmesh, &Gmesh->AnimSeqs[47], frame);
+
     srClear(RGB(0, 0, 0));
 
     srSetTextureFilter(TextureFilter::Unreal);
-    DrawMesh(&Gmesh, 0, 0, 20);
-
-    /*srSetTextureFilter(TextureFilter::Unreal);
-    DrawMesh(&Gmesh1, 1, 0, 1.2);*/
+    DrawMesh(Gmesh, 0, 0, 500);
 
     FPSMeterUpdate();
     FPSMeterDraw(0, FB_HEIGHT - 1 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
@@ -69,6 +87,7 @@ static void DrawFrame()
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
     uint8_t* frameBuffer = Thirteen::Init(FB_WIDTH, FB_HEIGHT);
+    Thirteen::SetVSync(false);
 
     float* depthBuffer = (float*)malloc(FB_WIDTH * FB_HEIGHT * sizeof(float));
 
@@ -82,17 +101,41 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
         });
 
-    if (!LoadMeshFromFile("./meshes/Base mesh.obj", &Gmesh)) 
+#if 1
+    auto archive = OpenArchive("../Unreal/System/UnrealI.u");
+    if (archive) 
+    {
+        if (LoadMeshFromArchive(archive, "Male2", &Gmesh)) {
+            Gmesh->Surfaces[0].Texture = LoadTexture("./meshes/textures/Ash.tga");
+        }
+        CloseArchive(archive);
+    }
+
+    if (!Gmesh)
     {
         MessageBox(NULL, L"Failed to load mesh", L"Error", MB_OK | MB_ICONERROR);
         return 0;
     }
+#else
+    if (!LoadMeshFromFile("./meshes/Base mesh.obj", &Gmesh)) 
+    //if (!GenerateMeshTriangle(&Gmesh))
+    {
+        MessageBox(NULL, L"Failed to load mesh", L"Error", MB_OK | MB_ICONERROR);
+        return 0;
+    }
+#endif
 
     FPSMeterInitialize();
 
+    LastTime = GetTickCount();
+
     while (true)
     {
-        DrawFrame();
+        DWORD currentTime = GetTickCount();
+        float deltaTime = (currentTime - LastTime) / 1000.0f;
+        LastTime = currentTime;
+
+        DrawFrame(deltaTime);
 
         if (!Thirteen::Render()) {
             break;
@@ -102,6 +145,7 @@ exit:
     if (depthBuffer) {
         free(depthBuffer);
     }
+    if (Gmesh) MeshFree(Gmesh);
     Thirteen::Shutdown();
 
     return 0;
