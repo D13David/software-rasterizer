@@ -41,6 +41,17 @@ void MeshFree(Mesh* mesh)
     free(mesh);
 }
 
+const MeshAnimSeq* FindAnimSequence(Mesh* mesh, const char* name)
+{
+    for (int i = 0; i < mesh->NumAnimSeqs; ++i)
+    {
+        if (!strcmp(mesh->AnimSeqs[i].Name, name)) {
+            return &mesh->AnimSeqs[i];
+        }
+    }
+    return NULL;
+}
+
 void UpdateGetFrame(Mesh* mesh, const MeshAnimSeq* anim, float frame)
 {
     int vertexSize = srInputStreamElementSize(mesh->InputDesc, mesh->NumInputElements);

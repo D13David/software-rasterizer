@@ -9,6 +9,7 @@ typedef struct Archive* ArchiveHandle;
 
 ArchiveHandle OpenArchive(const char* filename);
 void CloseArchive(ArchiveHandle handle);
+void DumpExportTable(ArchiveHandle archive, const char* className);
 const struct ExportEntry* FindExportByName(ArchiveHandle archive, const char* name, const char* className);
 
 // class loaders

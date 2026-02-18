@@ -16,7 +16,7 @@ typedef struct Surface
 
 typedef struct MeshAnimSeq
 {
-    uint32_t    Name;
+    char        Name[16];
     uint32_t    StartFrame;
     uint32_t    NumFrames;
     float       Rate;
@@ -41,6 +41,7 @@ typedef struct Mesh
 
 Mesh* MeshCreate(uint8_t vertexSize, uint32_t numVertices, uint32_t numSurfaces);
 void MeshFree(Mesh* mesh);
+const MeshAnimSeq* FindAnimSequence(Mesh* mesh, const char* name);
 void UpdateGetFrame(Mesh* mesh, const MeshAnimSeq* anim, float frame);
 
 #ifdef __cplusplus

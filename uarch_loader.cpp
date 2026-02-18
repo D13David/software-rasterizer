@@ -301,6 +301,22 @@ void CloseArchive(ArchiveHandle handle)
     }
 }
 
+void DumpExportTable(ArchiveHandle archive, const char* className)
+{
+    assert(archive != NULL);
+
+    for (ExportEntry* Export = archive->ExportTable; Export; Export = Export->Next)
+    {
+        const char* Cls;
+        const char* Pkg;
+        ResolveObjectClass(Export, archive, &Cls, &Pkg);
+
+        if (!className || strcmp(Cls, className) == 0) {
+            Trace("%s\n", archive->NameTable[Export->ObjectName]);
+        }
+    }
+}
+
 const struct ExportEntry* FindExportByName(ArchiveHandle archive, const char* name, const char* className)
 {
     assert(archive != NULL);
@@ -344,30 +360,18 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
     vec3 boundingSphere;
     fread(boundingSphere, sizeof(vec3), 1, archive->FilePointer);
 
-    int numVertices = ReadCompactIndex(archive->FilePointer);
-    
+    // read vertex buffer/keyframes -------------------------------------------------------------
     const uint32_t vertexSize = sizeof(vec3) + sizeof(vec2);
-
-    // initialize mesh buffers to read into them directly
-    Mesh* mesh = MeshCreate(vertexSize, numVertices, 1);
-
-    *outMesh = mesh;
-
-    // position (float3)
-    mesh->InputDesc[0].Type = InputElementType::TypePosition;
-    mesh->InputDesc[0].Format = InputElementFormat::FormatRGB32F;
-    mesh->InputDesc[0].Offset = 0;
-
-    // texcoord (float2)
-    mesh->InputDesc[1].Type = InputElementType::TypeTexcoord;
-    mesh->InputDesc[1].Format = InputElementFormat::FormatRG32F;
-    mesh->InputDesc[1].Offset = mesh->InputDesc[0].Offset + 12;
-    mesh->NumInputElements = 2;
-
-    float* vertexBuffer = (float*)mesh->VertexBuffer;
-
+    const uint32_t stride = vertexSize / sizeof(float);
     const float scale = 0.3f;
 
+    int numVertices = ReadCompactIndex(archive->FilePointer);
+    
+    float* vertexBuffer = (float*)malloc(vertexSize * numVertices);
+    assert(vertexBuffer);
+
+    // load vertice for all keyframes into a buffer. we can't load directly to our mesh because
+    // we have to split vertices with different tex-coords
     for (int i = 0; i < numVertices; ++i)
     {
         struct FVertex 
@@ -376,24 +380,40 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
         } V;
         fread((uint32_t*)&V, sizeof(uint32_t), 1, archive->FilePointer);
 
-        float* target = &vertexBuffer[i * vertexSize / sizeof(float)];
+        float* target = &vertexBuffer[i * stride];
 
         // position
-        *target++ = (V.X      ) * scale;
-        *target++ = (V.Y      ) * scale;
-        *target++ = (V.Z << 1 ) * scale;
+        *target++ = (V.X     ) * scale;
+        *target++ = (V.Y     ) * scale;
+        *target++ = (V.Z << 1) * scale;
 
         // texcoord
         *target++ = 0;
         *target++ = 0;
     }
 
+    // read indices -----------------------------------------------------------------------------
     int numTriangles = ReadCompactIndex(archive->FilePointer);
 
-    mesh->Surfaces[0].IndexBuffer = (uint16_t*)malloc(numTriangles * 3 * sizeof(uint16_t));
-    mesh->Surfaces[0].NumPrimitives = numTriangles;
+    typedef struct VertexMapEntry
+    {
+        uint32_t    key;
+        uint32_t    value;
+        uint8_t     used;
+    } VertexMapEntry;
 
-    uint16_t* indexBuffer = mesh->Surfaces[0].IndexBuffer;
+    const int mapSize = numTriangles * 6;
+    VertexMapEntry* map = (VertexMapEntry*)calloc(mapSize, sizeof(VertexMapEntry));
+    assert(map);
+
+    uint16_t* reverseRemap = (uint16_t*)malloc(numTriangles * 3 * sizeof(uint16_t));
+    assert(reverseRemap);
+
+    uint16_t* indexBuffer = (uint16_t*)malloc(numTriangles * 3 * sizeof(uint16_t));
+    assert(indexBuffer);
+
+    uint32_t newVertexCount = 0;
+    uint16_t* indexPtr = indexBuffer;
 
     for (int i = 0; i < numTriangles; ++i)
     {
@@ -402,31 +422,56 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
 
         for (int j = 0; j < 3; ++j)
         {
-            *indexBuffer++ = indices[j];
-
-            // FIXME: this needs to split vertices with same position but different uv
             uint8_t tex[2];
             fread(tex, sizeof(uint8_t), 2, archive->FilePointer);
-            float* target = &vertexBuffer[indices[j] * (vertexSize / sizeof(float)) + 3];
-            *target++ = tex[0] / 256.0f;
-            *target++ = tex[1] / 256.0f;
+
+            uint16_t originalIndex = indices[j];
+            uint32_t key = (originalIndex << 16) | (tex[0] << 8) | tex[1];
+            uint32_t hash = key % mapSize;
+
+            while (map[hash].used && map[hash].key != key)
+                hash = (hash + 1) % mapSize;
+
+            uint16_t finalIndex;
+
+            if (!map[hash].used)
+            {
+                map[hash].used = 1;
+                map[hash].key = key;
+                map[hash].value = newVertexCount;
+
+                reverseRemap[newVertexCount] = originalIndex;
+
+                finalIndex = newVertexCount++;
+            }
+            else
+            {
+                finalIndex = map[hash].value;
+            }
+
+            *indexPtr++ = finalIndex;
+
         }
 
         Read<uint32_t>(archive->FilePointer); // PolyFlags
         Read<uint32_t>(archive->FilePointer); // TextureIndex
     }
 
+    // read anim sequences ----------------------------------------------------------------------
     int numAnimSequences = ReadCompactIndex(archive->FilePointer);
 
-    mesh->AnimSeqs = (MeshAnimSeq*)malloc(numAnimSequences * sizeof(MeshAnimSeq));
+    MeshAnimSeq* animSeqs = (MeshAnimSeq*)malloc(numAnimSequences * sizeof(MeshAnimSeq));
+    assert(animSeqs);
 
     for (int i = 0; i < numAnimSequences; ++i)
     {
-        MeshAnimSeq* animSeq = &mesh->AnimSeqs[i];
-        animSeq->Name       = ReadCompactIndex(archive->FilePointer);
+        MeshAnimSeq* animSeq = &animSeqs[i];
+        uint32_t name       = ReadCompactIndex(archive->FilePointer);
         /* Group */           ReadCompactIndex(archive->FilePointer);
         animSeq->StartFrame = Read<int32_t>(archive->FilePointer);
         animSeq->NumFrames  = Read<int32_t>(archive->FilePointer);
+
+        strcpy_s(animSeq->Name, 16, archive->NameTable[name].Name);
 
         int numNotifies = ReadCompactIndex(archive->FilePointer);
         for (int j = 0; j < numNotifies; ++j)
@@ -439,7 +484,7 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
 
 #if _DEBUG
         Trace("#%d: %s (%d, %d, %f)\n", i, 
-            archive->NameTable[animSeq->Name],
+            animSeq->Name,
             animSeq->StartFrame,
             animSeq->NumFrames,
             animSeq->Rate);
@@ -453,7 +498,74 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
         2 * sizeof(uint32_t);           // curpoly, curvertex
     fseek(archive->FilePointer, (Export->SerialOffset + Export->SerialSize) - offset, SEEK_SET);
 
-    mesh->NumVertsPerFrame = Read<uint32_t>(archive->FilePointer);
+    uint32_t oldNumVertsPerFrame = Read<uint32_t>(archive->FilePointer);
+    uint32_t totalFrames = numVertices / oldNumVertsPerFrame;
+
+    // create mesh
+    Mesh* mesh = MeshCreate(vertexSize, newVertexCount * totalFrames, 1);
+    *outMesh = mesh;
+
+    // position (float3)
+    mesh->InputDesc[0].Type = InputElementType::TypePosition;
+    mesh->InputDesc[0].Format = InputElementFormat::FormatRGB32F;
+    mesh->InputDesc[0].Offset = 0;
+
+    // texcoord (float2)
+    mesh->InputDesc[1].Type = InputElementType::TypeTexcoord;
+    mesh->InputDesc[1].Format = InputElementFormat::FormatRG32F;
+    mesh->InputDesc[1].Offset = mesh->InputDesc[0].Offset + 12;
+    mesh->NumInputElements = 2;
+
+    // recreate keyframe buffer
+    float* oldVB = vertexBuffer;
+
+    float* newVB = (float*)mesh->VertexBuffer;
+
+    for (uint32_t frame = 0; frame < totalFrames; ++frame)
+    {
+        for (uint32_t newIndex = 0; newIndex < newVertexCount; ++newIndex)
+        {
+            uint32_t originalIndex = reverseRemap[newIndex];
+
+            float* src = oldVB +
+                frame * oldNumVertsPerFrame * stride +
+                originalIndex * stride;
+
+            float* dst = newVB +
+                frame * newVertexCount * stride +
+                newIndex * stride;
+
+            *dst++ = *src++;
+            *dst++ = *src++;
+            *dst++ = *src++;
+
+            uint32_t key = 0;
+            for (uint32_t k = 0; k < mapSize; ++k)
+            {
+                if (map[k].used && map[k].value == newIndex)
+                {
+                    key = map[k].key;
+                    break;
+                }
+            }
+
+            *dst++ = ((key >> 8) & 0xFF) / 256.0f;
+            *dst++ = (key & 0xFF) / 256.0f;
+        }
+    }
+
+    mesh->Surfaces[0].IndexBuffer = indexBuffer;
+    mesh->Surfaces[0].NumPrimitives = numTriangles;
+
+    mesh->AnimSeqs = animSeqs;
+    mesh->NumAnimSeqs = numAnimSequences;
+
+    mesh->NumVertsPerFrame = newVertexCount;
+
+cleanup:
+    free(vertexBuffer);
+    free(map);
+    free(reverseRemap);
 
     return 1;
 }

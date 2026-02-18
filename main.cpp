@@ -19,7 +19,8 @@
 #define FB_WIDTH 1280
 #define FB_HEIGHT 720
 
-Mesh* Gmesh;
+Mesh* Gmesh[10];
+int numMeshes;
 DWORD LastTime;
 float DeltaTime;
 
@@ -30,7 +31,7 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
     CreateMatrixTransform(tx, ty, tz, ObjectTransform);
 
     static float angle = 180;
-    angle += 45 * DeltaTime;
+    //angle += 5 * DeltaTime;
     if (angle > 360.0f) angle -= 360.0f;
 
     /*mat4_t ObjectRotateX;
@@ -59,10 +60,10 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 
         srDrawTriangleList
         (
-            Gmesh->FrameCache, 
+            mesh->FrameCache,
             surface->IndexBuffer,
-            Gmesh->InputDesc, 
-            Gmesh->NumInputElements, 
+            mesh->InputDesc,
+            mesh->NumInputElements,
             surface->NumPrimitives, 
             WorldViewProj, 
             true
@@ -74,12 +75,23 @@ static void DrawFrame()
 {
     static float frame = 0;
     frame += DeltaTime * 10;
-    UpdateGetFrame(Gmesh, &Gmesh->AnimSeqs[47], frame);
+
+    for (int i = 0; i < numMeshes; ++i) 
+    {
+        auto anim = FindAnimSequence(Gmesh[i], "Walk");
+        if (!anim) {
+            anim = FindAnimSequence(Gmesh[i], "Float");
+        }
+        UpdateGetFrame(Gmesh[i], anim, frame);
+    }
 
     srClear(RGB(0, 0, 0));
 
     srSetTextureFilter(TextureFilter::Unreal);
-    DrawMesh(Gmesh, 0, 0, 500);
+
+    for (int i = 0; i < numMeshes; ++i) {
+        DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 850);
+    }
 
     FPSMeterUpdate();
     FPSMeterDraw(0, FB_HEIGHT - 1 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
@@ -104,10 +116,28 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 #if 1
     auto archive = OpenArchive("../Unreal/System/UnrealI.u");
-    if (archive) 
+    if (archive)
     {
-        if (LoadMeshFromArchive(archive, "Male2", &Gmesh)) {
-            Gmesh->Surfaces[0].Texture = LoadTexture("./meshes/textures/Ash.tga");
+        DumpExportTable(archive, "Mesh");
+        struct LoadInfo
+        {
+            const char* name;
+            const char* skin;
+        };
+        LoadInfo loadInfos[] = {
+            { "Skaarjw", "./meshes/textures/Skaarjw3.tga" },
+            { "Merc", "./meshes/textures/JMerc1.tga" },
+            { "Male2", "./meshes/textures/Ash.tga" },
+            { "Female2", "./meshes/textures/F2Female2.tga" },
+            { "Female1", "./meshes/textures/gina.tga" },
+            { "Brute1", "./meshes/textures/jBrute1.tga" },
+            { "GasBagM", "./meshes/textures/GasBag2.tga" },
+            { NULL, NULL }
+        };
+        for (numMeshes = 0; loadInfos[numMeshes].name; ++numMeshes) {
+            if (LoadMeshFromArchive(archive, loadInfos[numMeshes].name, &Gmesh[numMeshes])) {
+                Gmesh[numMeshes]->Surfaces[0].Texture = LoadTexture(loadInfos[numMeshes].skin);
+            }
         }
         CloseArchive(archive);
     }
@@ -118,8 +148,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         return 0;
     }
 #else
-    if (!LoadMeshFromFile("./meshes/Base mesh.obj", &Gmesh)) 
-    //if (!GenerateMeshTriangle(&Gmesh))
+    if (!LoadMeshFromFile("./meshes/Base mesh.obj", &Gmesh))
+        //if (!GenerateMeshTriangle(&Gmesh))
     {
         MessageBox(NULL, L"Failed to load mesh", L"Error", MB_OK | MB_ICONERROR);
         return 0;
@@ -146,7 +176,9 @@ exit:
     if (depthBuffer) {
         free(depthBuffer);
     }
-    if (Gmesh) MeshFree(Gmesh);
+    for (int i = 0; i < numMeshes; ++i) {
+        MeshFree(Gmesh[i]);
+    }
     Thirteen::Shutdown();
 
     return 0;
