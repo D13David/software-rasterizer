@@ -307,27 +307,26 @@ static void RunVertexTransform(int start, int end, void* context)
     const int exportReserveSize = (end - start) * sizeof(ExportVertex) * 3;
     ExportVertex* exportVertexPtr = (ExportVertex*)ExportBufferReserve(ExportBuffer, exportReserveSize, 1, &offset, &region);
 
+    // setup vertex attribute streams
+    VertexTransformCommand* command = (VertexTransformCommand*)context;
+    int stride = srInputStreamElementSize(command->Elements, command->NumInputElements);
+
+    const InputElement* inputElementPosition = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypePosition);
+    assert(inputElementPosition != NULL);
+
+    const InputElement* inputElementTexcoord = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypeTexcoord);
+    assert(inputElementTexcoord != NULL);
+
     for (int index = start; index < end; ++index)
     {
-        VertexTransformCommand* command = (VertexTransformCommand*)context;
-
-        int stride = srInputStreamElementSize(command->Elements, command->NumInputElements);
-
-        const InputElement* inputElementPosition = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypePosition);
-        assert(inputElementPosition != NULL);
         float* pos0 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 0]);
         float* pos1 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 1]);
         float* pos2 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 2]);
 
-        const InputElement* inputElementTexcoord = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypeTexcoord);
-        assert(inputElementTexcoord != NULL);
-        const void* uv0 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 0]);
-        const void* uv1 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 1]);
-        const void* uv2 = srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 2]);
-
-        const float* t[3]{ (float*)(uv0),
-                           (float*)(uv1),
-                           (float*)(uv2) };
+        float* tex[3];
+        tex[0] = (float*)srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 0]);
+        tex[1] = (float*)srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 1]);
+        tex[2] = (float*)srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 2]);
 
         vec4 pos[3];
         Matrix4MulVec3(command->ProjectionMatrix, pos0, 1, pos[0]);
@@ -348,8 +347,8 @@ static void RunVertexTransform(int start, int end, void* context)
             vert->ScreenY = (int)pos[j][1];
             vert->InvW = invW;
             vert->ZOverW = pos[j][2] * invW;
-            vert->UOverW = t[j][0] * invW;
-            vert->VOverW = t[j][1] * invW;
+            vert->UOverW = tex[j][0] * invW;
+            vert->VOverW = tex[j][1] * invW;
         }
     }
 
@@ -411,10 +410,12 @@ static int FormatToSize(InputElementFormat format)
 int srInputStreamElementSize(const InputElement* elements, int numElements)
 {
     assert(elements != NULL);
+    assert(numElements >= 1);
 
-    uint32_t maxOffset = 0;
-    InputElementFormat lastElementFormat;
-    for (int i = 0; i < numElements; ++i)
+    uint32_t maxOffset = elements[0].Offset;
+    InputElementFormat lastElementFormat = elements[0].Format;
+
+    for (int i = 1; i < numElements; ++i)
     {
         if (elements[i].Offset > maxOffset)
         {
@@ -422,6 +423,7 @@ int srInputStreamElementSize(const InputElement* elements, int numElements)
             lastElementFormat = elements[i].Format;
         }
     }
+
     return maxOffset + FormatToSize(lastElementFormat);
 }
 
