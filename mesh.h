@@ -42,7 +42,8 @@ typedef struct Mesh
 Mesh* MeshCreate(uint8_t vertexSize, uint32_t numVertices, uint32_t numSurfaces);
 void MeshFree(Mesh* mesh);
 const MeshAnimSeq* FindAnimSequence(Mesh* mesh, const char* name);
-void UpdateGetFrame(Mesh* mesh, const MeshAnimSeq* anim, float frame);
+void UpdateFrame(Mesh* mesh, const MeshAnimSeq* anim, float frame);
+void UpdateFrameBlendAnims(Mesh* mesh, const MeshAnimSeq* anim1, const MeshAnimSeq* anim2, int frame1, int frame2, float blendFactor);
 
 #ifdef __cplusplus
 }

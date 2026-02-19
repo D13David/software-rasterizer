@@ -52,17 +52,13 @@ const MeshAnimSeq* FindAnimSequence(Mesh* mesh, const char* name)
     return NULL;
 }
 
-void UpdateGetFrame(Mesh* mesh, const MeshAnimSeq* anim, float frame)
+static void UpdateFramesExplicite(Mesh* mesh, int frameOffset1, int frameOffset2, float blendFactor)
 {
     int vertexSize = srInputStreamElementSize(mesh->InputDesc, mesh->NumInputElements);
-    int firstFrame = (int)frame;
-    float blendFactor = frame - firstFrame;
-    int offset1 = (anim->StartFrame + ((firstFrame + 0) % anim->NumFrames)) * mesh->NumVertsPerFrame;
-    int offset2 = (anim->StartFrame + ((firstFrame + 1) % anim->NumFrames)) * mesh->NumVertsPerFrame;
 
     float* uvReference = (float*)mesh->VertexBuffer;
-    float* frame1Start = (float*)((uint8_t*)mesh->VertexBuffer + (offset1 * vertexSize));
-    float* frame2Start = (float*)((uint8_t*)mesh->VertexBuffer + (offset2 * vertexSize));
+    float* frame1Start = (float*)((uint8_t*)mesh->VertexBuffer + (frameOffset1 * vertexSize));
+    float* frame2Start = (float*)((uint8_t*)mesh->VertexBuffer + (frameOffset2 * vertexSize));
 
     if (!mesh->FrameCache) {
         mesh->FrameCache = malloc(mesh->NumVertsPerFrame * vertexSize);
@@ -87,4 +83,19 @@ void UpdateGetFrame(Mesh* mesh, const MeshAnimSeq* anim, float frame)
         frame2Start += vertexSize / sizeof(float);
         target += vertexSize / sizeof(float);
     }
+}
+
+void UpdateFrame(Mesh* mesh, const MeshAnimSeq* anim, float frame)
+{
+    int firstFrame = (int)frame;
+    int offset1 = (anim->StartFrame + ((firstFrame + 0) % anim->NumFrames)) * mesh->NumVertsPerFrame;
+    int offset2 = (anim->StartFrame + ((firstFrame + 1) % anim->NumFrames)) * mesh->NumVertsPerFrame;
+    UpdateFramesExplicite(mesh, offset1, offset2, frame - firstFrame);
+}
+
+void UpdateFrameBlendAnims(Mesh* mesh, const MeshAnimSeq* anim1, const MeshAnimSeq* anim2, int frame1, int frame2, float blendFactor)
+{
+    int offset1 = (anim1->StartFrame + (frame1 % anim1->NumFrames)) * mesh->NumVertsPerFrame;
+    int offset2 = (anim2->StartFrame + (frame2 % anim2->NumFrames)) * mesh->NumVertsPerFrame;
+    UpdateFramesExplicite(mesh, offset1, offset2, blendFactor);
 }
