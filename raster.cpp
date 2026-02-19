@@ -18,6 +18,19 @@
 #   define DEBUG_VIEW 1
 #endif
 
+#define FB_WIDTH    Ctx.Out.Width
+#define FB_HEIGHT   Ctx.Out.Height
+
+#define TILE_WIDTH          32
+#define TILE_HEIGHT         32
+#define TILE_COUNT_X        (FB_WIDTH / TILE_WIDTH)
+#define TILE_COUNT_Y        (FB_HEIGHT / TILE_HEIGHT)
+#define MAX_TRIS_PER_TILE   1024
+#define MAX_TILES           ((1920 / TILE_WIDTH) * (1080 / TILE_HEIGHT))
+
+#define THREAD_GROUP_SIZE  128
+#define EXPORT_BUFFER_SIZE (32 * 1024 * 1024)
+
 typedef struct RasterContext
 {
     struct {
@@ -40,6 +53,12 @@ typedef struct ExportVertex
     float VOverW;           // v / w
 } ExportVertex;
 
+typedef struct ScreenTile
+{
+    int BinnedTriangles[MAX_TRIS_PER_TILE];
+    int NumTriangles;
+} ScreenTile;
+
 typedef struct VertexTransformCommand
 {
     const void*         Data;
@@ -49,15 +68,10 @@ typedef struct VertexTransformCommand
     mat4                ProjectionMatrix;
 } VertexTransformCommand;
 
-#define FB_WIDTH    Ctx.Out.Width
-#define FB_HEIGHT   Ctx.Out.Height
-
-#define THREAD_GROUP_SIZE  128
-#define EXPORT_BUFFER_SIZE (32 * 1024 * 1024)
-
 RasterContext Ctx;
 ExportBufferHandle ExportBuffer;
 ThreadPoolHandle ThreadPool;
+ScreenTile Tiles[MAX_TILES];
 
 void srInitialize(const RasterizerDesc& init)
 {
@@ -254,21 +268,32 @@ static Color DebugViewMipLevel(float mipLevel)
 }
 #endif
 
-static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2)
+static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2, int tileIndex)
 {
     int x0 = v0->ScreenX, y0 = v0->ScreenY;
     int x1 = v1->ScreenX, y1 = v1->ScreenY;
     int x2 = v2->ScreenX, y2 = v2->ScreenY;
 
     int area = Edge(x0, y0, x1, y1, x2, y2);
-    if (area < 0) {
+    /*if (area < 0) {
         return;
-    }
+    }*/
 
     float invArea = 1.0f / area;
 
     vec4i bounds;
     ComputeAABB(x0, y0, x1, y1, x2, y2, bounds);
+
+    // clamp bounds to screen tile
+    int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_HEIGHT;
+    int tileMinY = (tileIndex / TILE_COUNT_X) * TILE_WIDTH;
+    int tileMaxX = min(tileMinX + TILE_WIDTH - 1, FB_WIDTH - 1);
+    int tileMaxY = min(tileMinY + TILE_HEIGHT - 1, FB_HEIGHT - 1);
+
+    bounds[0] = max(bounds[0], tileMinX);
+    bounds[1] = max(bounds[1], tileMinY);
+    bounds[2] = min(bounds[2], tileMaxX);
+    bounds[3] = min(bounds[3], tileMaxY);
 
     int A01 = y0 - y1, B01 = x1 - x0;
     int A12 = y1 - y2, B12 = x2 - x1;
@@ -413,14 +438,63 @@ static void RunVertexTransform(int start, int end, void* context)
     ExportBufferPublish(ExportBuffer, region);
 }
 
-static void RunRasterizeTriangles(int start, int end, void* context)
+static void RunRasterizeTriangles(int tileIndexStart, int tileIndexEnd, void* context)
 {
-    ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer) + start * 3;
+    // one tile per thread
+    assert(tileIndexStart + 1 == tileIndexEnd); 
 
-    for (int i = 0; i < (end - start); ++i)
+    ScreenTile* tile = &Tiles[tileIndexStart];
+
+    for (int i = 0; i < tile->NumTriangles; ++i)
     {
-        srDrawTriangle(&transformedVertices[0], &transformedVertices[1], &transformedVertices[2]);
-        transformedVertices += 3;
+        ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer) + tile->BinnedTriangles[i] * 3;
+        srDrawTriangle(&transformedVertices[0], &transformedVertices[1], &transformedVertices[2], tileIndexStart);
+    }
+}
+
+static void RunTileBinning()
+{
+    ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer);
+    size_t numVerticesWritten = ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex);
+
+    for (int i = 0; i < MAX_TILES; ++i) {
+        Tiles[i].NumTriangles = 0;
+    }
+
+    for (size_t i = 0; i < numVerticesWritten; i += 3)
+    {
+        const ExportVertex& v0 = transformedVertices[i + 0];
+        const ExportVertex& v1 = transformedVertices[i + 1];
+        const ExportVertex& v2 = transformedVertices[i + 2];
+
+        int x0 = v0.ScreenX, y0 = v0.ScreenY;
+        int x1 = v1.ScreenX, y1 = v1.ScreenY;
+        int x2 = v2.ScreenX, y2 = v2.ScreenY;
+
+        // triangle is backface culled
+        int area = Edge(x0, y0, x1, y1, x2, y2);
+        if (area < 0) {
+            continue;
+        }
+
+        vec4i bounds;
+        ComputeAABB(x0, y0, x1, y1, x2, y2, bounds);
+
+        int minTileX = max(0, bounds[0] / TILE_WIDTH);
+        int minTileY = max(0, bounds[1] / TILE_HEIGHT);
+        int maxTileX = max(TILE_COUNT_X - 1, bounds[2] / TILE_WIDTH);
+        int maxTileY = max(TILE_COUNT_Y - 1, bounds[3] / TILE_HEIGHT);
+
+        for (int y = minTileY; y <= maxTileY; ++y)
+        {
+            for (int x = minTileX; x <= maxTileX; ++x)
+            {
+                int tileIndex = y * TILE_COUNT_X + x;
+                ScreenTile* tile = &Tiles[tileIndex];
+                assert(tile->NumTriangles < MAX_TRIS_PER_TILE - 1);
+                tile->BinnedTriangles[tile->NumTriangles++] = i / 3;
+            }
+        }
     }
 }
 
@@ -435,11 +509,14 @@ void srDrawTriangleList(const void* data, const uint16_t* indices, const InputEl
     CopyMatrix(ProjectionMatrix, command.ProjectionMatrix);
     if (parallel)
     {
+        // run vertex transformation
         ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE, &RunVertexTransform, &command);
 
-        // TODO: this can actually start in parallel to the vertex transformation
-        size_t numVerticesWritten = ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex);
-        ParallelFor(ThreadPool, 0, numVerticesWritten * 3, THREAD_GROUP_SIZE, &RunRasterizeTriangles, NULL);
+        // run tile binning
+        RunTileBinning();
+
+        // rasterize tiles
+        ParallelFor(ThreadPool, 0, MAX_TILES, 1, &RunRasterizeTriangles, NULL);
     }
     else
     {
