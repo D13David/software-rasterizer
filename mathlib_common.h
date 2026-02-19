@@ -30,7 +30,7 @@ PJD_INLINE float Lerp(float a, float b, float t)
     return a * (1.0f - t) + b * t; 
 }
 
-PJD_INLINE void Lerp(vec3 a, vec3 b, float t, vec3 out)
+PJD_INLINE void Lerp(const vec3 a, const vec3 b, float t, vec3 out)
 {
     out[0] = Lerp(a[0], b[0], t);
     out[1] = Lerp(a[1], b[1], t);
