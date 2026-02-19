@@ -224,7 +224,7 @@ TextureView LoadCheckerboardTexture()
     // TODO: memory is never freed
 
     if (!GCheckerBoardTexture.Data) {
-        GenerateCheckerboardTexture(&GCheckerBoardTexture, 256, 256, 8);
+        GenerateCheckerboardTexture(&GCheckerBoardTexture, 1024, 1024, 64);
     }
     return GCheckerBoardTexture;
 }

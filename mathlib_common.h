@@ -30,10 +30,23 @@ PJD_INLINE float Lerp(float a, float b, float t)
     return a * (1.0f - t) + b * t; 
 }
 
+PJD_INLINE void Lerp(vec3 a, vec3 b, float t, vec3 out)
+{
+    out[0] = Lerp(a[0], b[0], t);
+    out[1] = Lerp(a[1], b[1], t);
+    out[2] = Lerp(a[2], b[2], t);
+}
+
 PJD_INLINE float Log2Fast(float x)
 {
-    union { float f; uint32_t i; } u = { x };
-    return (float)((int)(u.i >> 23) - 127);
+#if 1
+    return log2f(x);
+#else
+    union { float f; uint32_t i; } vx = { x };
+    float y = (float)(vx.i);
+    y *= 1.1920928955078125e-7f;
+    return y - 124.22551499f;
+#endif
 }
 
 //=============================================================================

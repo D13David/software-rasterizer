@@ -26,12 +26,13 @@ float DeltaTime;
 
 static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 {
+#if 0
     // object transform
     mat4 ObjectTransform;
     CreateMatrixTransform(tx, ty, tz, ObjectTransform);
 
-    static float angle = 180;
-    //angle += 5 * DeltaTime;
+    static float angle = 0;
+    angle += 10 * DeltaTime;
     if (angle > 360.0f) angle -= 360.0f;
 
     /*mat4_t ObjectRotateX;
@@ -43,6 +44,33 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
     mat4 WorldMat;
     //MatrixMultiply(ObjectRotateX, ObjectRotateY, WorldMat);
     Matrix4Mul(ObjectRotateY, ObjectTransform, WorldMat);
+#else
+    static float angle = 70.0;
+    static bool forward = true;
+    if (forward)
+    {
+        angle += 10 * DeltaTime;
+        if (angle > 85) {
+            forward = false;
+        }
+    }
+    else
+    {
+        angle -= 10 * DeltaTime;
+        if (angle < 70) {
+            forward = true;
+        }
+    }
+
+    mat4 ObjectTransform;
+    CreateMatrixTransform(tx, ty, tz, ObjectTransform);
+
+    mat4 ObjectRotateX;
+    CreateMatrixRotateX(DEG2RAD(angle), ObjectRotateX);
+
+    mat4 WorldMat;
+    Matrix4Mul(ObjectRotateX, ObjectTransform, WorldMat);
+#endif
 
     //// projection
     mat4 ProjectionMat;
@@ -60,7 +88,7 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 
         srDrawTriangleList
         (
-            mesh->FrameCache,
+            mesh->NumAnimSeqs == 0 ? mesh->VertexBuffer : mesh->FrameCache,
             surface->IndexBuffer,
             mesh->InputDesc,
             mesh->NumInputElements,
@@ -73,6 +101,7 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 
 static void DrawFrame()
 {
+#if 0
     static float frame = 0;
     frame += DeltaTime * 10;
 
@@ -84,13 +113,14 @@ static void DrawFrame()
         }
         UpdateGetFrame(Gmesh[i], anim, frame);
     }
+#endif
 
     srClear(RGB(0, 0, 0));
 
-    srSetTextureFilter(TextureFilter::Unreal);
+    //srSetTextureFilter(TextureFilter::Unreal);
 
     for (int i = 0; i < numMeshes; ++i) {
-        DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 850);
+        DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 260);
     }
 
     FPSMeterUpdate();
@@ -114,7 +144,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
         });
 
-#if 1
+#if 0
     auto archive = OpenArchive("../Unreal/System/UnrealI.u");
     if (archive)
     {
@@ -148,8 +178,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         return 0;
     }
 #else
-    if (!LoadMeshFromFile("./meshes/Base mesh.obj", &Gmesh))
-        //if (!GenerateMeshTriangle(&Gmesh))
+    //if (!LoadMeshFromFile("./meshes/Base mesh.obj", &Gmesh))
+    if (!GenerateMeshQuad(&Gmesh[numMeshes++], 220, 500))
     {
         MessageBox(NULL, L"Failed to load mesh", L"Error", MB_OK | MB_ICONERROR);
         return 0;

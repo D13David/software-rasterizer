@@ -8,6 +8,16 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+// enable for rendering color coded mip-map levels
+#define DEBUG_MIP_LEVELS 0
+
+// enable for rendering screenspace derivatives accross polygons
+#define DEBUG_SCREENSPACE_DERIVATIVES 0
+
+#if DEBUG_MIP_LEVELS || DEBUG_SCREENSPACE_DERIVATIVES
+#   define DEBUG_VIEW 1
+#endif
+
 typedef struct RasterContext
 {
     struct {
@@ -203,6 +213,47 @@ Color srSampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
     return mipData[y * mipWidth + x];
 }
 
+#if DEBUG_SCREENSPACE_DERIVATIVES
+static Color DebugViewScreenSpaceDerivatives(float dudx, float dudy, float dvdx, float dvdy)
+{
+    const float maxDeriv = 1.0f / 0.05f;
+    float magU = sqrt(dudx * dudx + dudy * dudy);
+    float magV = sqrt(dvdx * dvdx + dvdy * dvdy);
+    float r = fmin(magU * maxDeriv, 1.0f);
+    float g = fmin(magV * maxDeriv, 1.0f);
+    return COLOR(r, g, 0.0f);
+}
+#endif
+
+#if DEBUG_MIP_LEVELS
+static const vec3 MipDebugColors[15] = 
+{
+    {1.0f, 0.0f, 0.0f},     // red
+    {0.0f, 1.0f, 0.0f},     // green
+    {0.0f, 0.0f, 1.0f},     // blue
+    {1.0f, 1.0f, 0.0f},     // yellow
+    {1.0f, 0.0f, 1.0f},     // magenta
+    {0.0f, 1.0f, 1.0f},     // cyan
+    {1.0f, 0.5f, 0.0f},     // orange
+    {0.5f, 0.0f, 1.0f},     // purple
+    {0.0f, 0.5f, 1.0f},     // sky blue
+    {0.5f, 1.0f, 0.0f},     // lime
+    {1.0f, 0.0f, 0.5f},     // pink
+    {0.0f, 0.5f, 0.0f},     // dark green
+    {0.5f, 0.25f, 0.0f},    // brown
+    {0.25f, 0.25f, 0.25f},  // gray
+    {1.0f, 1.0f, 1.0f}      // white
+};
+
+static Color DebugViewMipLevel(float mipLevel)
+{
+    vec3 mipDebugColor;
+    int firstMipLevel = (int)mipLevel;
+    Lerp(MipDebugColors[firstMipLevel + 0], MipDebugColors[firstMipLevel + 1], mipLevel - firstMipLevel, mipDebugColor);
+    return COLOR(mipDebugColor[0], mipDebugColor[1], mipDebugColor[2]);
+}
+#endif
+
 static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2)
 {
     int x0 = v0->ScreenX, y0 = v0->ScreenY;
@@ -283,7 +334,13 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
                     if (zndc[i] < depthBuffer[py[i] * FB_WIDTH + px[i]])
                     {
                         depthBuffer[py[i] * FB_WIDTH + px[i]] = zndc[i];
+#if DEBUG_SCREENSPACE_DERIVATIVES
+                        Color color = DebugViewScreenSpaceDerivatives(dudx, dudy, dvdx, dvdy);
+#elif DEBUG_MIP_LEVELS
+                        Color color = DebugViewMipLevel(mipLevel);
+#else
                         Color color = srSampleTextureLod(px[i], py[i], u[i], v[i], mipLevel);
+#endif
                         srDrawPixel(px[i], py[i], color);
                     }
                 }

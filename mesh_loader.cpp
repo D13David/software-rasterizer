@@ -118,67 +118,81 @@ int GenerateMeshTriangle(Mesh** outputMesh)
     indices[2] = 2;
 
     mesh->Surfaces[0].IndexBuffer = indices;
-    mesh->Surfaces[0].Texture = LoadColorTexture(COLOR(1, 1, 1));
+    mesh->Surfaces[0].Texture = LoadCheckerboardTexture();
     mesh->Surfaces[0].NumPrimitives = 1;
 
     return 1;
 }
 
-int GenerateMeshQuad(Mesh* mesh)
+int GenerateMeshQuad(Mesh** outputMesh, float width, float height)
 {
-    //mesh->inputDesc[0].Type = InputElementType::TypePosition;
-    //mesh->inputDesc[0].Format = InputElementFormat::FormatRGB32F;
-    //mesh->inputDesc[0].Offset = 0;
+    const int vertexSize = sizeof(vec3) + sizeof(vec2);
+    Mesh* mesh = MeshCreate(vertexSize, 4, 1);
+    assert(mesh != NULL);
+    assert(mesh->Surfaces != NULL);
 
-    //mesh->inputDesc[1].Type = InputElementType::TypeTexcoord;
-    //mesh->inputDesc[1].Format = InputElementFormat::FormatRG32F;
-    //mesh->inputDesc[1].Offset = 12; // float3 position
+    *outputMesh = mesh;
 
-    //mesh->numInputElements = 2;
+    mesh->InputDesc[0].Type = InputElementType::TypePosition;
+    mesh->InputDesc[0].Format = InputElementFormat::FormatRGB32F;
+    mesh->InputDesc[0].Offset = 0;
 
-    //int object_size = srInputStreamElementSize(mesh->inputDesc, mesh->numInputElements);
-    //size_t stride = object_size / sizeof(float);
+    mesh->InputDesc[1].Type = InputElementType::TypeTexcoord;
+    mesh->InputDesc[1].Format = InputElementFormat::FormatRG32F;
+    mesh->InputDesc[1].Offset = 12;
 
-    //mesh->verts = (float*)malloc(object_size * 6);
-    //mesh->numTris = 2;
+    mesh->NumInputElements = 2;
 
-    //float* vb = mesh->verts;
+    size_t stride = vertexSize / sizeof(float);
+    float* vb = (float*)mesh->VertexBuffer;
 
-    //vb[0 * stride + 0] = -1;
-    //vb[0 * stride + 1] = 1;
-    //vb[0 * stride + 2] = 0;
-    //vb[0 * stride + 3] = 0;
-    //vb[0 * stride + 4] = 0;
+    float hw = width * 0.5f;
+    float hh = height * 0.5f;
 
-    //vb[1 * stride + 0] = 1;
-    //vb[1 * stride + 1] = -1;
-    //vb[1 * stride + 2] = 0;
-    //vb[1 * stride + 3] = 1;
-    //vb[1 * stride + 4] = 1;
+    // --- Aspect-preserving UV scale ---
+    float uScale = 1.0f;
+    float vScale = 1.0f;
 
-    //vb[2 * stride + 0] = -1;
-    //vb[2 * stride + 1] = -1;
-    //vb[2 * stride + 2] = 0;
-    //vb[2 * stride + 3] = 0;
-    //vb[2 * stride + 4] = 1;
+    if (width > height)
+        uScale = width / height;
+    else
+        vScale = height / width;
 
-    //vb[3 * stride + 0] = -1;
-    //vb[3 * stride + 1] = 1;
-    //vb[3 * stride + 2] = 0;
-    //vb[3 * stride + 3] = 0;
-    //vb[3 * stride + 4] = 0;
+    // Top-left
+    vb[0 * stride + 0] = -hw;
+    vb[0 * stride + 1] = hh;
+    vb[0 * stride + 2] = 0.0f;
+    vb[0 * stride + 3] = 0.0f;
+    vb[0 * stride + 4] = 0.0f;
 
-    //vb[4 * stride + 0] = 1;
-    //vb[4 * stride + 1] = 1;
-    //vb[4 * stride + 2] = 0;
-    //vb[4 * stride + 3] = 1;
-    //vb[4 * stride + 4] = 0;
+    // Top-right
+    vb[1 * stride + 0] = hw;
+    vb[1 * stride + 1] = hh;
+    vb[1 * stride + 2] = 0.0f;
+    vb[1 * stride + 3] = uScale;
+    vb[1 * stride + 4] = 0.0f;
 
-    //vb[5 * stride + 0] = 1;
-    //vb[5 * stride + 1] = -1;
-    //vb[5 * stride + 2] = 0;
-    //vb[5 * stride + 3] = 1;
-    //vb[5 * stride + 4] = 1;
+    // Bottom-right
+    vb[2 * stride + 0] = hw;
+    vb[2 * stride + 1] = -hh;
+    vb[2 * stride + 2] = 0.0f;
+    vb[2 * stride + 3] = uScale;
+    vb[2 * stride + 4] = vScale;
+
+    // Bottom-left
+    vb[3 * stride + 0] = -hw;
+    vb[3 * stride + 1] = -hh;
+    vb[3 * stride + 2] = 0.0f;
+    vb[3 * stride + 3] = 0.0f;
+    vb[3 * stride + 4] = vScale;
+
+    uint16_t* indices = (uint16_t*)malloc(6 * sizeof(uint16_t));
+    indices[0] = 0; indices[1] = 1; indices[2] = 2;
+    indices[3] = 0; indices[4] = 2; indices[5] = 3;
+
+    mesh->Surfaces[0].IndexBuffer = indices;
+    mesh->Surfaces[0].Texture = LoadCheckerboardTexture();
+    mesh->Surfaces[0].NumPrimitives = 2;
 
     return 1;
 }
