@@ -58,6 +58,9 @@
     <ClCompile Include="uarch_loader.cpp">
       <Filter>io</Filter>
     </ClCompile>
+    <ClCompile Include="profile.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="raster.h">
@@ -113,6 +116,12 @@
     </ClInclude>
     <ClInclude Include="uarch_loader.h">
       <Filter>io</Filter>
+    </ClInclude>
+    <ClInclude Include="font_render.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="profile.h">
+      <Filter>common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -102,7 +102,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions);PJD_PROFILING_ENABLED=1</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/arch:AVX %(AdditionalOptions)</AdditionalOptions>
@@ -118,7 +118,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions);PJD_PROFILING_ENABLED=1</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/arch:AVX %(AdditionalOptions)</AdditionalOptions>
@@ -135,6 +135,7 @@
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="mesh_loader.cpp" />
     <ClCompile Include="parallel_for.cpp" />
+    <ClCompile Include="profile.cpp" />
     <ClCompile Include="raster.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="texture_loader.cpp" />
@@ -145,6 +146,7 @@
   <ItemGroup>
     <ClInclude Include="common.h" />
     <ClInclude Include="export_buffer.h" />
+    <ClInclude Include="font_render.h" />
     <ClInclude Include="fps_meter.h" />
     <ClInclude Include="mat4.h" />
     <ClInclude Include="mathlib_common.h" />
@@ -153,6 +155,7 @@
     <ClInclude Include="mesh.h" />
     <ClInclude Include="mesh_loader.h" />
     <ClInclude Include="parallel_for.h" />
+    <ClInclude Include="profile.h" />
     <ClInclude Include="raster.h" />
     <ClInclude Include="raster_common.h" />
     <ClInclude Include="raster_types.h" />

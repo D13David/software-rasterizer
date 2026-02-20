@@ -13,20 +13,21 @@
 #include "raster.h"
 #include "fps_meter.h"
 #include "uarch_loader.h"
+#include "profile.h"
 
 #define FPS_METER_WIDTH 200
 #define FPS_METER_HEIGHT 70
 #define FB_WIDTH 1280
 #define FB_HEIGHT 720
 
+static DWORD LastTime;
+static float DeltaTime;
+
 Mesh* Gmesh[10];
 int numMeshes;
-DWORD LastTime;
-float DeltaTime;
 
 static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 {
-#if 0
     // object transform
     mat4 ObjectTransform;
     CreateMatrixTransform(tx, ty, tz, ObjectTransform);
@@ -44,33 +45,6 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
     mat4 WorldMat;
     //MatrixMultiply(ObjectRotateX, ObjectRotateY, WorldMat);
     Matrix4Mul(ObjectRotateY, ObjectTransform, WorldMat);
-#else
-    static float angle = 70.0;
-    static bool forward = true;
-    if (forward)
-    {
-        angle += 10 * DeltaTime;
-        if (angle > 85) {
-            forward = false;
-        }
-    }
-    else
-    {
-        angle -= 10 * DeltaTime;
-        if (angle < 70) {
-            forward = true;
-        }
-    }
-
-    mat4 ObjectTransform;
-    CreateMatrixTransform(tx, ty, tz, ObjectTransform);
-
-    mat4 ObjectRotateX;
-    CreateMatrixRotateX(DEG2RAD(angle), ObjectRotateX);
-
-    mat4 WorldMat;
-    Matrix4Mul(ObjectRotateX, ObjectTransform, WorldMat);
-#endif
 
     //// projection
     mat4 ProjectionMat;
@@ -101,7 +75,8 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 
 static void DrawFrame()
 {
-#if 0
+    PROFILE_AUTO("Frame");
+
     static float frame = 0;
     frame += DeltaTime * 10;
 
@@ -111,16 +86,15 @@ static void DrawFrame()
         if (!anim) {
             anim = FindAnimSequence(Gmesh[i], "Float");
         }
-        UpdateGetFrame(Gmesh[i], anim, frame);
+        UpdateFrame(Gmesh[i], anim, frame);
     }
-#endif
 
     srClear(RGB(0, 0, 0));
 
-    //srSetTextureFilter(TextureFilter::Unreal);
+    srSetTextureFilter(TextureFilter::Unreal);
 
     for (int i = 0; i < numMeshes; ++i) {
-        DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 260);
+        DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 800);
     }
 
     FPSMeterUpdate();
@@ -131,6 +105,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 {
     uint8_t* frameBuffer = Thirteen::Init(FB_WIDTH, FB_HEIGHT);
     Thirteen::SetVSync(false);
+
+    ProfilerInitialize();
 
     float* depthBuffer = (float*)malloc(FB_WIDTH * FB_HEIGHT * sizeof(float));
 
@@ -144,7 +120,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
         });
 
-#if 0
+#if 1
     auto archive = OpenArchive("../Unreal/System/UnrealI.u");
     if (archive)
     {
@@ -196,7 +172,9 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         DeltaTime = (currentTime - LastTime) / 1000.0f;
         LastTime = currentTime;
 
+        ProfilerReset();
         DrawFrame();
+        DrawProfilerStats(10, 10, 300);
 
         if (!Thirteen::Render()) {
             break;

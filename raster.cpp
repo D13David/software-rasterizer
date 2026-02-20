@@ -4,6 +4,7 @@
 #include "thread_pool.h"
 #include "parallel_for.h"
 #include "export_buffer.h"
+#include "profile.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -161,6 +162,17 @@ void srDrawLine(int x0, int y0, int x1, int y1, Color Color)
         {
             err += dx;
             y0 += sy;
+        }
+    }
+}
+
+void srDrawRectangle(int posX, int posY, int w, int h, Color color)
+{
+    for (int y = 0; y < h; y++)
+    {
+        for (int x = 0; x < w; x++)
+        {
+            srDrawPixel(posX + x, posY + y, color);
         }
     }
 }
@@ -382,7 +394,7 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
     }
 }
 
-static void RunVertexTransform(int start, int end, void* context)
+static void RunVertexTransform_(int start, int end, void* context)
 {
     struct Region* region;
     size_t offset;
@@ -438,22 +450,37 @@ static void RunVertexTransform(int start, int end, void* context)
     ExportBufferPublish(ExportBuffer, region);
 }
 
-static void RunRasterizeTriangles(int tileIndexStart, int tileIndexEnd, void* context)
+static void RunRasterizeTriangles_(int tileIndexStart, int tileIndexEnd, void* context)
 {
-    // one tile per thread
-    assert(tileIndexStart + 1 == tileIndexEnd); 
-
-    ScreenTile* tile = &Tiles[tileIndexStart];
-
-    for (int i = 0; i < tile->NumTriangles; ++i)
+    for (int i = tileIndexStart; i < tileIndexEnd; ++i)
     {
-        ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer) + tile->BinnedTriangles[i] * 3;
-        srDrawTriangle(&transformedVertices[0], &transformedVertices[1], &transformedVertices[2], tileIndexStart);
+        ScreenTile* tile = &Tiles[i];
+
+        for (int j = 0; j < tile->NumTriangles; ++j)
+        {
+            ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer) + tile->BinnedTriangles[j] * 3;
+            srDrawTriangle(&transformedVertices[0], &transformedVertices[1], &transformedVertices[2], i);
+        }
     }
+}
+
+static void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransformCommand* command)
+{
+    PROFILE_AUTO("Vertex Transform");
+    if (parallelize) ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE, &RunVertexTransform_, command);
+    else RunVertexTransform_(0, numPrimitives, command);
+}
+
+static void RunRasterizeTriangles(bool parallelize)
+{
+    PROFILE_AUTO("Rasterize");
+    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, 8, &RunRasterizeTriangles_, NULL);
+    else RunRasterizeTriangles_(0, MAX_TILES, NULL);
 }
 
 static void RunTileBinning()
 {
+    PROFILE_AUTO("Tile Binning");
     ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer);
     size_t numVerticesWritten = ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex);
 
@@ -506,25 +533,14 @@ void srDrawTriangleList(const void* data, const uint16_t* indices, const InputEl
         .Elements = elements,
         .NumInputElements = numInputElements
     };
+
     CopyMatrix(ProjectionMatrix, command.ProjectionMatrix);
-    if (parallel)
-    {
-        // run vertex transformation
-        ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE, &RunVertexTransform, &command);
 
-        // run tile binning
-        RunTileBinning();
+    RunVertexTransform(parallel, numPrimitives, &command);
 
-        // rasterize tiles
-        ParallelFor(ThreadPool, 0, MAX_TILES, 1, &RunRasterizeTriangles, NULL);
-    }
-    else
-    {
-        RunVertexTransform(0, numPrimitives, &command);
+    RunTileBinning();
 
-        size_t numVerticesWritten = ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex);
-        RunRasterizeTriangles(0, numVerticesWritten, NULL);
-    }
+    RunRasterizeTriangles(parallel);
 
     // TODO: we probably don't need to reset the buffer here
     ExportBufferReset(ExportBuffer);
