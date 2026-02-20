@@ -427,5 +427,6 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
+tmp/
 meshes/
 todo.txt

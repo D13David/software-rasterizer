@@ -28,6 +28,8 @@ int numMeshes;
 
 static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 {
+    PROFILE_AUTO("DrawMesh");
+
     // object transform
     mat4 ObjectTransform;
     CreateMatrixTransform(tx, ty, tz, ObjectTransform);
@@ -77,16 +79,20 @@ static void DrawFrame()
 {
     PROFILE_AUTO("Frame");
 
-    static float frame = 0;
-    frame += DeltaTime * 10;
-
-    for (int i = 0; i < numMeshes; ++i) 
     {
-        auto anim = FindAnimSequence(Gmesh[i], "Walk");
-        if (!anim) {
-            anim = FindAnimSequence(Gmesh[i], "Float");
+        PROFILE_AUTO("Update Animations");
+
+        static float frame = 0;
+        frame += DeltaTime * 10;
+
+        for (int i = 0; i < numMeshes; ++i)
+        {
+            auto anim = FindAnimSequence(Gmesh[i], "Walk");
+            if (!anim) {
+                anim = FindAnimSequence(Gmesh[i], "Float");
+            }
+            UpdateFrame(Gmesh[i], anim, frame);
         }
-        UpdateFrame(Gmesh[i], anim, frame);
     }
 
     srClear(RGB(0, 0, 0));

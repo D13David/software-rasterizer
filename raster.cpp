@@ -474,7 +474,7 @@ static void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransf
 static void RunRasterizeTriangles(bool parallelize)
 {
     PROFILE_AUTO("Rasterize");
-    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, 8, &RunRasterizeTriangles_, NULL);
+    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, 1, &RunRasterizeTriangles_, NULL);
     else RunRasterizeTriangles_(0, MAX_TILES, NULL);
 }
 

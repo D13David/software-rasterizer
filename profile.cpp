@@ -124,8 +124,7 @@ void ProfilerReset()
 
 void DrawProfilerStats(int posX, int posY, int width)
 {
-    const float maxMs = 1000.0 / 120.0;
-
+    const float maxFrameBudgetMs = 1000.0f / 30.0f;
     int offsetY = posY - 16;
 
     for (int i = 0; i < Context.NumNodes; i++)
@@ -136,20 +135,25 @@ void DrawProfilerStats(int posX, int posY, int width)
         }
 
         double avg = node->Sum / node->Count;
+        double total = node->Sum;
 
-        int minX = posX + int((node->Min / maxMs) * width);
-        int maxX = posX + int((node->Max / maxMs) * width);
-        int avgX = posX + int((avg / maxMs) * width);
+        int minX = posX + int((node->Min / maxFrameBudgetMs) * width);
+        int maxX = posX + int((node->Max / maxFrameBudgetMs) * width);
+        int avgX = posX + int((avg / maxFrameBudgetMs) * width);
+        int totalX = posX + int((total / maxFrameBudgetMs) * width);
 
         offsetY += 16;
+
         FntWriteString(node->Name, posX, offsetY - 6);
 
         offsetY += 8;
-        srDrawRectangle(posX, offsetY - 4, avgX - posX, 8, COLOR(0.75f, 0.75f, 0.75f));
+
+        srDrawRectangle(posX, offsetY - 4, totalX - posX, 8, COLOR(0.75f, 0.75f, 0.75f));
         srDrawLine(minX, offsetY - 4, minX, offsetY + 4, COLOR(0, 1, 0));
         srDrawLine(maxX, offsetY - 4, maxX, offsetY + 4, COLOR(1, 0, 0));
+        srDrawLine(avgX, offsetY - 4, avgX, offsetY + 4, COLOR(0, 0, 1));
 
-        FntWriteString(Format("%.03f ms", avg), posX + width, offsetY - 4);
+        FntWriteString(Format("%.03fms (%.03fms)", total, avg), posX + width, offsetY - 4);
     }
 }
 #endif // #if PJD_PROFILING_ENABLED
