@@ -10,6 +10,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <intrin.h>
+#include <atomic>
+
+using AtomicInt = std::atomic<int>;
 
 // enable for rendering color coded mip-map levels
 #define DEBUG_MIP_LEVELS 0
@@ -59,7 +62,7 @@ typedef struct ExportVertex
 typedef struct ScreenTile
 {
     int BinnedTriangles[MAX_TRIS_PER_TILE];
-    int NumTriangles;
+    AtomicInt NumTriangles;
 } ScreenTile;
 
 typedef struct VertexTransformCommand
@@ -654,35 +657,15 @@ static void RunRasterizeTriangles_(int tileIndexStart, int tileIndexEnd, void* c
     }
 }
 
-static void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransformCommand* command)
+static void RunTriangleBinning_(int indexStart, int indexEnd, void* context)
 {
-    PROFILE_AUTO("Vertex Transform");
-    if (parallelize) ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE, &RunVertexTransform_, command);
-    else RunVertexTransform_(0, numPrimitives, command);
-}
-
-static void RunRasterizeTriangles(bool parallelize)
-{
-    PROFILE_AUTO("Rasterize");
-    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, 1, &RunRasterizeTriangles_, NULL);
-    else RunRasterizeTriangles_(0, MAX_TILES, NULL);
-}
-
-static void RunTileBinning()
-{
-    PROFILE_AUTO("Tile Binning");
     ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer);
-    size_t numVerticesWritten = ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex);
 
-    for (int i = 0; i < MAX_TILES; ++i) {
-        Tiles[i].NumTriangles = 0;
-    }
-
-    for (size_t i = 0; i < numVerticesWritten; i += 3)
+    for (size_t i = indexStart; i < indexEnd; ++i)
     {
-        const ExportVertex& v0 = transformedVertices[i + 0];
-        const ExportVertex& v1 = transformedVertices[i + 1];
-        const ExportVertex& v2 = transformedVertices[i + 2];
+        const ExportVertex& v0 = transformedVertices[i * 3 + 0];
+        const ExportVertex& v1 = transformedVertices[i * 3 + 1];
+        const ExportVertex& v2 = transformedVertices[i * 3 + 2];
 
         int x0 = v0.ScreenX, y0 = v0.ScreenY;
         int x1 = v1.ScreenX, y1 = v1.ScreenY;
@@ -708,11 +691,39 @@ static void RunTileBinning()
             {
                 int tileIndex = y * TILE_COUNT_X + x;
                 ScreenTile* tile = &Tiles[tileIndex];
-                assert(tile->NumTriangles < MAX_TRIS_PER_TILE - 1);
-                tile->BinnedTriangles[tile->NumTriangles++] = i / 3;
+                int index = std::atomic_fetch_add_explicit(&tile->NumTriangles, 1, std::memory_order_relaxed);
+                assert(index < MAX_TRIS_PER_TILE);
+                tile->BinnedTriangles[index] = i;
             }
         }
     }
+}
+
+static void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransformCommand* command)
+{
+    PROFILE_AUTO("Vertex Transform");
+    if (parallelize) ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE, &RunVertexTransform_, command);
+    else RunVertexTransform_(0, numPrimitives, command);
+}
+
+static void RunRasterizeTriangles(bool parallelize)
+{
+    PROFILE_AUTO("Rasterize");
+    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, 1, &RunRasterizeTriangles_, NULL);
+    else RunRasterizeTriangles_(0, MAX_TILES, NULL);
+}
+
+static void RunTriangleBinning(bool parallelize)
+{
+    PROFILE_AUTO("Triangle Binning");
+    
+    for (int i = 0; i < MAX_TILES; ++i) {
+        Tiles[i].NumTriangles = 0;
+    }
+
+    size_t numTrianglesWritten = (ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex)) / 3;
+    if (parallelize) ParallelFor(ThreadPool, 0, numTrianglesWritten, 32, &RunTriangleBinning_, NULL);
+    else RunTriangleBinning_(0, numTrianglesWritten, NULL);
 }
 
 void srDrawTriangleList(const void* data, const uint16_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
@@ -728,7 +739,7 @@ void srDrawTriangleList(const void* data, const uint16_t* indices, const InputEl
 
     RunVertexTransform(parallel, numPrimitives, &command);
 
-    RunTileBinning();
+    RunTriangleBinning(parallel);
 
     RunRasterizeTriangles(parallel);
 
