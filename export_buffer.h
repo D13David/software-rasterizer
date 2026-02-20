@@ -7,10 +7,10 @@ extern "C" {
 
 typedef struct ExportBuffer* ExportBufferHandle;
 
-ExportBufferHandle ExportBufferCreate(size_t capacity, size_t maxRegions);
+ExportBufferHandle ExportBufferCreate(size_t capacity, size_t maxRanges);
 void ExportBufferDestroy(ExportBufferHandle buffer);
-void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t alignment, size_t* outOffset, struct Region** outRegion);
-void ExportBufferPublish(ExportBufferHandle buffer, Region* region);
+void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t alignment, size_t* outOffset, struct Range** outRange);
+void ExportBufferPublish(ExportBufferHandle buffer, Range* range);
 size_t ExportBufferUsed(ExportBufferHandle buffer);
 void* ExportBufferData(ExportBufferHandle buffer);
 size_t ExportBufferCapacity(ExportBufferHandle buffer);

@@ -14,6 +14,7 @@
 #include "fps_meter.h"
 #include "uarch_loader.h"
 #include "profile.h"
+#include "render_stats.h"
 
 #define FPS_METER_WIDTH 200
 #define FPS_METER_HEIGHT 70
@@ -105,6 +106,8 @@ static void DrawFrame()
 
     FPSMeterUpdate();
     FPSMeterDraw(0, FB_HEIGHT - 1 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
+
+    DrawRenderStats(FB_WIDTH - 170, 10);
 }
 
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
@@ -179,6 +182,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         LastTime = currentTime;
 
         ProfilerReset();
+        ResetRenderStats();
         DrawFrame();
         DrawProfilerStats(10, 10, 300);
 

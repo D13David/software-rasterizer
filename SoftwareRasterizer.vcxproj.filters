@@ -61,6 +61,9 @@
     <ClCompile Include="profile.cpp">
       <Filter>common</Filter>
     </ClCompile>
+    <ClCompile Include="render_stats.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="raster.h">
@@ -122,6 +125,9 @@
     </ClInclude>
     <ClInclude Include="profile.h">
       <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="render_stats.h">
+      <Filter>renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

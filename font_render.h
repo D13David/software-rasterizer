@@ -286,7 +286,7 @@ PJD_INLINE void FntWriteChar(int posX, int posY, char c, uint32_t color = 0xFFFF
 
 PJD_INLINE void FntWriteString(const char* text, int posX, int posY, uint32_t color = 0xFFFFFFFF)
 {
-    int length = strlen(text);
+    size_t length = strlen(text);
     for (int i = 0; i < length; ++i) {
         FntWriteChar(posX + i * GLYPH_WIDTH, posY, text[i], color);
     }

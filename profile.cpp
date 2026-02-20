@@ -17,7 +17,7 @@
 
 struct ProfileStackEntry
 {
-    int     Id;
+    size_t  Id;
     double  StartTimeMs;
 };
 
@@ -35,7 +35,7 @@ struct ProfileNode
 struct ProfilingContext
 {
     ProfileNode         Nodes[MAX_NODES];
-    int                 NumNodes;
+    size_t              NumNodes;
     ProfileStackEntry   Stack[MAX_STACK];
     int                 StackTop;
     LARGE_INTEGER       TimerFreq;
@@ -64,13 +64,13 @@ void ProfilerInitialize()
     Context.MainThreadId = GetCurrentThreadId();
 }
 
-int ProfileRegisterNode(const char* name)
+size_t ProfileRegisterNode(const char* name)
 {
     assert(name != nullptr);
     assert(Context.NumNodes < MAX_NODES);
 
     ASSERT_MAIN_THREAD();
-    int id = Context.NumNodes;
+    size_t id = Context.NumNodes;
 
     strncpy_s(Context.Nodes[id].Name, name, NAME_LENGTH);
 
@@ -83,7 +83,7 @@ int ProfileRegisterNode(const char* name)
     return id;
 }
 
-void ProfileStackPushId(int id)
+void ProfileStackPushId(size_t id)
 {
     ASSERT_MAIN_THREAD();
     assert(Context.StackTop < MAX_STACK);

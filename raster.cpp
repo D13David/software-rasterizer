@@ -5,9 +5,11 @@
 #include "parallel_for.h"
 #include "export_buffer.h"
 #include "profile.h"
+#include "render_stats.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <intrin.h>
 
 // enable for rendering color coded mip-map levels
 #define DEBUG_MIP_LEVELS 0
@@ -69,10 +71,10 @@ typedef struct VertexTransformCommand
     mat4                ProjectionMatrix;
 } VertexTransformCommand;
 
-RasterContext Ctx;
-ExportBufferHandle ExportBuffer;
-ThreadPoolHandle ThreadPool;
-ScreenTile Tiles[MAX_TILES];
+static RasterContext Ctx;
+static ExportBufferHandle ExportBuffer;
+static ThreadPoolHandle ThreadPool;
+static ScreenTile Tiles[MAX_TILES];
 
 void srInitialize(const RasterizerDesc& init)
 {
@@ -94,7 +96,7 @@ void srInitialize(const RasterizerDesc& init)
 #endif
     ThreadPool = ThreadPoolInit(numThreads, 1024 * 32);
 
-    size_t regionSize = THREAD_GROUP_SIZE * sizeof(ExportVertex) * 3;
+    size_t regionSize = THREAD_GROUP_SIZE * sizeof(ExportVertex) * 15; // upper bound for clipped vertices per region
     size_t maxRegions = (EXPORT_BUFFER_SIZE + regionSize - 1) / regionSize;
     ExportBuffer = ExportBufferCreate(EXPORT_BUFFER_SIZE, maxRegions);
 }
@@ -287,9 +289,11 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
     int x2 = v2->ScreenX, y2 = v2->ScreenY;
 
     int area = Edge(x0, y0, x1, y1, x2, y2);
-    /*if (area < 0) {
+
+    // reject zero area triangles. vertex transform exports zero area triangles for fully discarted triangles
+    if (area == 0) {
         return;
-    }*/
+    }
 
     float invArea = 1.0f / area;
 
@@ -394,13 +398,113 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
     }
 }
 
+static PJD_INLINE uint8_t VertexOutcode(vec4 p)
+{
+    uint8_t outcode = 0;
+    if (p[0] < -p[3]) outcode |= (1 << 0);
+    if (p[0] >  p[3]) outcode |= (1 << 1);
+    if (p[1] < -p[3]) outcode |= (1 << 2);
+    if (p[1] >  p[3]) outcode |= (1 << 3);
+    if (p[2] < -p[3]) outcode |= (1 << 4);
+    if (p[2] >  p[3]) outcode |= (1 << 5);
+    return outcode;
+}
+
+typedef struct ClipVertex
+{
+    vec4    ClipSpacePos;
+    vec2    TexCoords;
+} ClipVertex;
+
+static ClipVertex Clip(const ClipVertex* v0, const ClipVertex* v1, float dot0, float dot1)
+{
+    ClipVertex out;
+    float alpha = dot0 / (dot0 - dot1);
+    LerpVec4(v0->ClipSpacePos, v1->ClipSpacePos, alpha, out.ClipSpacePos);
+    LerpVec2(v0->TexCoords, v1->TexCoords, alpha, out.TexCoords);
+    return out;
+}
+
+static int ClipPolygonAgainstPlane(const vec4 plane, ClipVertex* verts, int numVertices, ClipVertex* clippedVerts)
+{
+    assert(numVertices != 0);
+
+    ClipVertex prev = verts[numVertices - 1];
+    float prevDist = Vec4Dot(prev.ClipSpacePos, plane);
+    int prevInside = prevDist >= 0.0f;
+    int count = 0;
+
+    for (int i = 0; i < numVertices; ++i)
+    {
+        ClipVertex curr = verts[i];
+        float currDist = Vec4Dot(curr.ClipSpacePos, plane);
+        int currInside = currDist >= 0.0f;
+
+        if (currInside)
+        {
+            if (!prevInside) {
+                clippedVerts[count++] = Clip(&prev, &curr, prevDist, currDist);
+            }
+            clippedVerts[count++] = curr;
+        }
+        else if (prevInside)
+        {
+            clippedVerts[count++] = Clip(&prev, &curr, prevDist, currDist);
+        }
+
+        prev = curr;
+        prevInside = currInside;
+        prevDist = currDist;
+    }
+
+    return count;
+}
+
+static int ClipTriangleAgainstFrustum(ClipVertex verts[3], uint8_t m0, uint8_t m1, uint8_t m2,  ClipVertex clippedVerts[12])
+{
+    // assume only intersecting triangles are processed here
+    assert((m0 & m1 & m2) == 0 && (m0 | m1 | m2) != 0);
+
+    static const vec4 FrustumPlanes[6] =
+    {
+        {  1,  0,  0,  1 }, // Left
+        { -1,  0,  0,  1 }, // Right
+        {  0,  1,  0,  1 }, // Bottom
+        {  0, -1,  0,  1 }, // Top
+        {  0,  0,  1,  1 }, // Near
+        {  0,  0, -1,  1 }  // Far
+    };
+
+    ClipVertex buffer[2][12];
+
+    memcpy(buffer[0], verts, sizeof(ClipVertex) * 3);
+
+    int count = 3;
+    int source = 0, target = 1;
+    uint8_t mask = (m0 | m1 | m2);
+
+    for (int i = 0; i < 6; ++i)
+    {
+        if (!(mask & (1 << i))) {
+            continue;
+        }
+
+        count = ClipPolygonAgainstPlane(FrustumPlanes[i], buffer[source], count, buffer[target]);
+        if (count == 0) {
+            return 0;
+        }
+
+        // pingpong index update
+        target = 1 - target, source = 1 - source;
+    }
+
+    memcpy(clippedVerts, buffer[source], sizeof(ClipVertex) * count);
+
+    return count;
+}
+
 static void RunVertexTransform_(int start, int end, void* context)
 {
-    struct Region* region;
-    size_t offset;
-    const int exportReserveSize = (end - start) * sizeof(ExportVertex) * 3;
-    ExportVertex* exportVertexPtr = (ExportVertex*)ExportBufferReserve(ExportBuffer, exportReserveSize, 1, &offset, &region);
-
     // setup vertex attribute streams
     VertexTransformCommand* command = (VertexTransformCommand*)context;
     int stride = srInputStreamElementSize(command->Elements, command->NumInputElements);
@@ -411,43 +515,129 @@ static void RunVertexTransform_(int start, int end, void* context)
     const InputElement* inputElementTexcoord = srInputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypeTexcoord);
     assert(inputElementTexcoord != NULL);
 
-    for (int index = start; index < end; ++index)
-    {
-        float* pos0 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 0]);
-        float* pos1 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 1]);
-        float* pos2 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 2]);
+    int index = start;
+    int allocationHint = 0;
 
-        float* tex[3];
-        tex[0] = (float*)srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 0]);
-        tex[1] = (float*)srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 1]);
-        tex[2] = (float*)srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 2]);
+    do {
+        // allocate a chunk of memory for our transformed vertex exports
+        struct Range* range;
+        int allocatedVertexCount = (allocationHint > 0 ? allocationHint : (end - index)) * 3;
+        ExportVertex* exportVertexPtr = (ExportVertex*)ExportBufferReserve(ExportBuffer, allocatedVertexCount * sizeof(ExportVertex), 1, NULL, &range);
+        assert(exportVertexPtr != NULL);
+        ExportVertex* exportVertexEndPtr = exportVertexPtr + allocatedVertexCount;
 
-        vec4 pos[3];
-        Matrix4MulVec3(command->ProjectionMatrix, pos0, 1, pos[0]);
-        Matrix4MulVec3(command->ProjectionMatrix, pos1, 1, pos[1]);
-        Matrix4MulVec3(command->ProjectionMatrix, pos2, 1, pos[2]);
+        allocationHint = 0;
 
-        // FIXME: clip triangle against frustrum
-
-        ClipToScreen(pos[0], FB_WIDTH, FB_HEIGHT, pos[0]);
-        ClipToScreen(pos[1], FB_WIDTH, FB_HEIGHT, pos[1]);
-        ClipToScreen(pos[2], FB_WIDTH, FB_HEIGHT, pos[2]);
-
-        for (int j = 0; j < 3; ++j)
+        for ( ; index < end && exportVertexPtr < exportVertexEndPtr; ++index)
         {
-            ExportVertex* vert = exportVertexPtr++;
-            float invW = 1.0f / pos[j][3];
-            vert->ScreenX = (int)pos[j][0];
-            vert->ScreenY = (int)pos[j][1];
-            vert->InvW = invW;
-            vert->ZOverW = pos[j][2] * invW;
-            vert->UOverW = tex[j][0] * invW;
-            vert->VOverW = tex[j][1] * invW;
-        }
-    }
+            float* pos0 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 0]);
+            float* pos1 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 1]);
+            float* pos2 = (float*)srInputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 2]);
 
-    // publish the written region
-    ExportBufferPublish(ExportBuffer, region);
+            float* tex[3];
+            tex[0] = (float*)srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 0]);
+            tex[1] = (float*)srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 1]);
+            tex[2] = (float*)srInputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 2]);
+
+            vec4 pos[3];
+            Matrix4MulVec3(command->ProjectionMatrix, pos0, 1, pos[0]);
+            Matrix4MulVec3(command->ProjectionMatrix, pos1, 1, pos[1]);
+            Matrix4MulVec3(command->ProjectionMatrix, pos2, 1, pos[2]);
+
+            // compute vertex outcode for trivial reject
+            uint8_t out0 = VertexOutcode(pos[0]);
+            uint8_t out1 = VertexOutcode(pos[1]);
+            uint8_t out2 = VertexOutcode(pos[2]);
+
+            // vertex is fully outside, we can skip it
+            if ((out0 & out1 & out2) != 0)
+            {
+                RENDER_STATS_ADD(TrianglesCulled, 1);
+                memset(exportVertexPtr, 0, sizeof(ExportVertex) * 3);
+                exportVertexPtr += 3;
+                continue;
+            }
+
+            ClipVertex input[3], clipped[12];
+            int numClippedVertices = 0;
+            if ((out0 | out1 | out2) != 0)
+            {
+                RENDER_STATS_ADD(TrianglesClipped, 1);
+
+                // estimate upper bound of triangles after clipping and triangulating
+                int maxVertices = (min(12, 3 + __popcnt(out0 | out1 | out2)) - 2) * 3;
+
+                // not enough buffer space remaining to hold all triangles, start over
+                ptrdiff_t numFreeVertices = exportVertexEndPtr - exportVertexPtr;
+                if (numFreeVertices < maxVertices)
+                {
+                    allocationHint = maxVertices;
+                    break;
+                }
+
+                // enough space left for export, then clip triangle
+                for (int i = 0; i < 3; ++i)
+                {
+                    memcpy(input[i].ClipSpacePos, pos[i], sizeof(vec4));
+                    memcpy(input[i].TexCoords, tex[i], sizeof(vec2));
+                }
+
+                numClippedVertices = ClipTriangleAgainstFrustum(input, out0, out1, out2, clipped);
+            }
+            else
+            {
+                // fully inside, no clipping needed
+                for (int i = 0; i < 3; ++i)
+                {
+                    memcpy(clipped[i].ClipSpacePos, pos[i], sizeof(vec4));
+                    memcpy(clipped[i].TexCoords, tex[i], sizeof(vec2));
+                }
+                numClippedVertices = 3;
+            }
+
+            for (int i = 1; i < numClippedVertices - 1; ++i)
+            {
+                ClipVertex v0 = clipped[0];
+                ClipVertex v1 = clipped[i];
+                ClipVertex v2 = clipped[i + 1];
+
+                ClipToScreen(v0.ClipSpacePos, FB_WIDTH, FB_HEIGHT, v0.ClipSpacePos);
+                ClipToScreen(v1.ClipSpacePos, FB_WIDTH, FB_HEIGHT, v1.ClipSpacePos);
+                ClipToScreen(v2.ClipSpacePos, FB_WIDTH, FB_HEIGHT, v2.ClipSpacePos);
+
+#define EXPORT_VERTEX(idx, vert) do {                                   \
+        float invW = 1.0f / pos[(idx)][3];                              \
+        exportVertexPtr[(idx)].ScreenX = (int)vert.ClipSpacePos[0];    \
+        exportVertexPtr[(idx)].ScreenY = (int)vert.ClipSpacePos[1];    \
+        exportVertexPtr[(idx)].InvW    = invW;                          \
+        exportVertexPtr[(idx)].ZOverW  = vert.ClipSpacePos[2] * invW;  \
+        exportVertexPtr[(idx)].UOverW  = vert.TexCoords[0] * invW;     \
+        exportVertexPtr[(idx)].VOverW  = vert.TexCoords[1] * invW;     \
+    } while (0)
+
+                EXPORT_VERTEX(0, v0);
+                EXPORT_VERTEX(1, v1);
+                EXPORT_VERTEX(2, v2);
+
+                exportVertexPtr += 3;
+
+                RENDER_STATS_ADD(TrianglesRendered, 1);
+            }
+        }
+
+        // FIXME: zero out remaining buffer space ?
+        /*ptrdiff_t remaining = (exportVertexEndPtr - exportVertexPtr);
+        for (int i = 0; i < remaining; ++i)
+        {
+            exportVertexPtr->ScreenX = 0;
+            exportVertexPtr->ScreenY = 0;
+            exportVertexPtr++;
+        }*/
+
+        // publish the written range
+        ExportBufferPublish(ExportBuffer, range);
+
+    } while (index < end); // // previously allocated range is full but still vertices left to transform.. let's start over
 }
 
 static void RunRasterizeTriangles_(int tileIndexStart, int tileIndexEnd, void* context)

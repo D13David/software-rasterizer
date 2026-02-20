@@ -9,6 +9,8 @@
 #include <stdarg.h>
 #include <math.h>
 
+#define PJD_USE_RENDER_STATS 1
+
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 

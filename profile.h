@@ -16,8 +16,8 @@ extern "C" {
 DECLARE_INTERFACE(void ProfilerInitialize());
 DECLARE_INTERFACE(void ProfilerReset());
 DECLARE_INTERFACE(void DrawProfilerStats(int posX, int posY, int width));
-DECLARE_INTERFACE(int ProfileRegisterNode(const char* name));
-DECLARE_INTERFACE(void ProfileStackPushId(int id));
+DECLARE_INTERFACE(size_t ProfileRegisterNode(const char* name));
+DECLARE_INTERFACE(void ProfileStackPushId(size_t id));
 DECLARE_INTERFACE(void ProfileStackPop());
 
 #if PJD_PROFILING_ENABLED

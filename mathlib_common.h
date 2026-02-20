@@ -30,11 +30,30 @@ PJD_INLINE float Lerp(float a, float b, float t)
     return a * (1.0f - t) + b * t; 
 }
 
-PJD_INLINE void Lerp(const vec3 a, const vec3 b, float t, vec3 out)
+PJD_INLINE void LerpVec2(const vec2 a, const vec2 b, float t, vec2 out)
+{
+    out[0] = Lerp(a[0], b[0], t);
+    out[1] = Lerp(a[1], b[1], t);
+}
+
+PJD_INLINE void LerpVec3(const vec3 a, const vec3 b, float t, vec3 out)
 {
     out[0] = Lerp(a[0], b[0], t);
     out[1] = Lerp(a[1], b[1], t);
     out[2] = Lerp(a[2], b[2], t);
+}
+
+PJD_INLINE void LerpVec4(const vec4 a, const vec4 b, float t, vec4 out)
+{
+    out[0] = Lerp(a[0], b[0], t);
+    out[1] = Lerp(a[1], b[1], t);
+    out[2] = Lerp(a[2], b[2], t);
+    out[3] = Lerp(a[3], b[3], t);
+}
+
+PJD_INLINE float Vec4Dot(const vec4 a, const vec4 b)
+{
+    return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]);
 }
 
 PJD_INLINE float Log2Fast(float x)

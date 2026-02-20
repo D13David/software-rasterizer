@@ -138,6 +138,7 @@
     <ClCompile Include="profile.cpp" />
     <ClCompile Include="raster.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="render_stats.cpp" />
     <ClCompile Include="texture_loader.cpp" />
     <ClCompile Include="thread_pool.cpp" />
     <ClCompile Include="tinyobj_loader.h" />
@@ -159,6 +160,7 @@
     <ClInclude Include="raster.h" />
     <ClInclude Include="raster_common.h" />
     <ClInclude Include="raster_types.h" />
+    <ClInclude Include="render_stats.h" />
     <ClInclude Include="stb_image_resize2.h" />
     <ClInclude Include="texture_loader.h" />
     <ClInclude Include="thirteen.h" />
