@@ -56,6 +56,16 @@ PJD_INLINE float Vec4Dot(const vec4 a, const vec4 b)
     return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]);
 }
 
+PJD_INLINE void Vec2Copy(const vec2 src, vec2 dst)
+{
+    memcpy(dst, src, sizeof(vec2));
+}
+
+PJD_INLINE void Vec4Copy(const vec4 src, vec4 dst)
+{
+    memcpy(dst, src, sizeof(vec4));
+}
+
 PJD_INLINE float Log2Fast(float x)
 {
 #if 1
@@ -159,6 +169,7 @@ PJD_INLINE void ClipToScreen(const vec4 clip, int screenWidth, int screenHeight,
     out[0] = (x + 1) * 0.5f * screenWidth;
     out[1] = (1 - (y + 1) * 0.5f) * screenHeight;
     out[2] = z; // range [0,1]
+    out[3] = invW;
 }
 
 #endif // PJD_MATHLIB_COMMON_H

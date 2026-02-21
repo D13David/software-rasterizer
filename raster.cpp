@@ -609,13 +609,13 @@ static void RunVertexTransform_(int start, int end, void* context)
                 ClipToScreen(v2.ClipSpacePos, FB_WIDTH, FB_HEIGHT, v2.ClipSpacePos);
 
 #define EXPORT_VERTEX(idx, vert) do {                                   \
-        float invW = 1.0f / pos[(idx)][3];                              \
-        exportVertexPtr[(idx)].ScreenX = (int)vert.ClipSpacePos[0];    \
-        exportVertexPtr[(idx)].ScreenY = (int)vert.ClipSpacePos[1];    \
+        float invW = 1.0f / vert.ClipSpacePos[3];                       \
+        exportVertexPtr[(idx)].ScreenX = (int)vert.ClipSpacePos[0];     \
+        exportVertexPtr[(idx)].ScreenY = (int)vert.ClipSpacePos[1];     \
         exportVertexPtr[(idx)].InvW    = invW;                          \
-        exportVertexPtr[(idx)].ZOverW  = vert.ClipSpacePos[2] * invW;  \
-        exportVertexPtr[(idx)].UOverW  = vert.TexCoords[0] * invW;     \
-        exportVertexPtr[(idx)].VOverW  = vert.TexCoords[1] * invW;     \
+        exportVertexPtr[(idx)].ZOverW  = vert.ClipSpacePos[2] * invW;   \
+        exportVertexPtr[(idx)].UOverW  = vert.TexCoords[0] * invW;      \
+        exportVertexPtr[(idx)].VOverW  = vert.TexCoords[1] * invW;      \
     } while (0)
 
                 EXPORT_VERTEX(0, v0);

@@ -3,17 +3,22 @@
 
 #include "common.h"
 
+#include <atomic>
+
+using AtomicInt = std::atomic<int>;
+
 typedef struct RenderStats
 {
-    uint32_t    TrianglesClipped;
-    uint32_t    TrianglesCulled;
-    uint32_t    TrianglesRendered;
+    AtomicInt    TrianglesClipped;
+    AtomicInt    TrianglesCulled;
+    AtomicInt    ZeroAreaTris;
+    AtomicInt    TrianglesRendered;
 } RenderStats;
 
 extern RenderStats Stats;
 
 #if PJD_USE_RENDER_STATS
-#   define RENDER_STATS_ADD(name, value) Stats.name += (value)
+#   define RENDER_STATS_ADD(name, value) std::atomic_fetch_add_explicit(&Stats.name, (value), std::memory_order_relaxed);
 #else
 #   define RENDER_STATS_ADD(name, value)
 #endif
