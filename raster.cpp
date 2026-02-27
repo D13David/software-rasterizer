@@ -295,6 +295,7 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
 
     // reject zero area triangles. vertex transform exports zero area triangles for fully discarted triangles
     if (area == 0) {
+        RENDER_STATS_ADD(ZeroAreaTris, 1);
         return;
     }
 
@@ -525,7 +526,7 @@ static void RunVertexTransform_(int start, int end, void* context)
         // allocate a chunk of memory for our transformed vertex exports
         struct Range* range;
         int allocatedVertexCount = (allocationHint > 0 ? allocationHint : (end - index)) * 3;
-        ExportVertex* exportVertexPtr = (ExportVertex*)ExportBufferReserve(ExportBuffer, allocatedVertexCount * sizeof(ExportVertex), 1, NULL, &range);
+        ExportVertex* exportVertexPtr = (ExportVertex*)ExportBufferReserve(ExportBuffer, allocatedVertexCount * sizeof(ExportVertex), NULL, &range);
         assert(exportVertexPtr != NULL);
         ExportVertex* exportVertexEndPtr = exportVertexPtr + allocatedVertexCount;
 
@@ -581,8 +582,8 @@ static void RunVertexTransform_(int start, int end, void* context)
                 // enough space left for export, then clip triangle
                 for (int i = 0; i < 3; ++i)
                 {
-                    memcpy(input[i].ClipSpacePos, pos[i], sizeof(vec4));
-                    memcpy(input[i].TexCoords, tex[i], sizeof(vec2));
+                    Vec4Copy(pos[i], input[i].ClipSpacePos);
+                    Vec4Copy(tex[i], input[i].TexCoords);
                 }
 
                 numClippedVertices = ClipTriangleAgainstFrustum(input, out0, out1, out2, clipped);
@@ -592,8 +593,8 @@ static void RunVertexTransform_(int start, int end, void* context)
                 // fully inside, no clipping needed
                 for (int i = 0; i < 3; ++i)
                 {
-                    memcpy(clipped[i].ClipSpacePos, pos[i], sizeof(vec4));
-                    memcpy(clipped[i].TexCoords, tex[i], sizeof(vec2));
+                    Vec4Copy(pos[i], clipped[i].ClipSpacePos);
+                    Vec4Copy(tex[i], clipped[i].TexCoords);
                 }
                 numClippedVertices = 3;
             }
@@ -627,15 +628,6 @@ static void RunVertexTransform_(int start, int end, void* context)
                 RENDER_STATS_ADD(TrianglesRendered, 1);
             }
         }
-
-        // FIXME: zero out remaining buffer space ?
-        /*ptrdiff_t remaining = (exportVertexEndPtr - exportVertexPtr);
-        for (int i = 0; i < remaining; ++i)
-        {
-            exportVertexPtr->ScreenX = 0;
-            exportVertexPtr->ScreenY = 0;
-            exportVertexPtr++;
-        }*/
 
         // publish the written range
         ExportBufferPublish(ExportBuffer, range);

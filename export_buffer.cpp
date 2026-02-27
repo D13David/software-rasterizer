@@ -17,13 +17,15 @@ typedef struct Range
 typedef struct ExportBuffer
 {
     size_t      Capacity;
-    atomic_size ReservedOffset;
-    atomic_size PublishedOffset;
+    alignas(64) atomic_size ReservedOffset;
+    alignas(64) atomic_size NextRegionIndex;
 
     size_t      MaxRanges;
     Range*      Ranges;
-    atomic_size NextRegionIndex;
-    atomic_size PublishedRegionIndex;
+    size_t      PublishedOffset;
+    size_t      PublishedRegionIndex;
+
+    CRITICAL_SECTION RangeLock;
 
     uint8_t     Memory[1];
 } ExportBuffer;
@@ -41,7 +43,7 @@ ExportBufferHandle ExportBufferCreate(size_t capacity, size_t maxRegions)
 
     buffer->Capacity = capacity;
     buffer->ReservedOffset.store(0, std::memory_order_relaxed);
-    buffer->PublishedOffset.store(0, std::memory_order_relaxed);
+    buffer->PublishedOffset = 0;
     buffer->MaxRanges = maxRegions;
     buffer->Ranges = (Range*)malloc(sizeof(Range) * maxRegions);
     if (!buffer->Ranges) {
@@ -54,8 +56,10 @@ ExportBufferHandle ExportBufferCreate(size_t capacity, size_t maxRegions)
         buffer->Ranges[i].Offset = 0;
         buffer->Ranges[i].Size = 0;
     }
-    buffer->NextRegionIndex.store(0, std::memory_order_relaxed);
-    buffer->PublishedRegionIndex.store(0, std::memory_order_relaxed);
+    buffer->NextRegionIndex = 0;
+    buffer->PublishedRegionIndex = 0;
+
+    InitializeCriticalSection(&buffer->RangeLock);
 
     return buffer;
 
@@ -73,19 +77,13 @@ void ExportBufferDestroy(ExportBufferHandle buffer)
     free(buffer);
 }
 
-static PJD_INLINE size_t Align(size_t value, size_t alignment)
-{
-    assert((alignment != 0) && ((alignment & (alignment - 1)) == 0));
-    return (value + alignment - 1) & ~(alignment - 1);
-}
-
 static PJD_INLINE uint8_t* ExportBufferMemory(ExportBuffer* buffer)
 {
     assert(buffer != NULL);
     return buffer->Memory;
 }
 
-void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t alignment, size_t* outOffset, Range** outRegion)
+void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t* outOffset, Range** outRegion)
 {
     if (buffer == NULL || size == 0) {
         return NULL;
@@ -95,17 +93,15 @@ void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t alignme
 
     while (true)
     {
-        const size_t alignedOffset = Align(currentOffset, alignment);
-
-        if (alignedOffset > buffer->Capacity) {
+        if (currentOffset > buffer->Capacity) {
             return NULL;
         }
 
-        if (size > buffer->Capacity - alignedOffset) {
+        if (size > buffer->Capacity - currentOffset) {
             return NULL;
         }
 
-        const size_t newOffset = alignedOffset + size;
+        const size_t newOffset = currentOffset + size;
 
         if (std::atomic_compare_exchange_weak_explicit(
                 &buffer->ReservedOffset,
@@ -114,18 +110,21 @@ void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t alignme
                 std::memory_order_acq_rel, 
                 std::memory_order_relaxed)) 
         {
+            EnterCriticalSection(&buffer->RangeLock);
             // assign a range slot
-            size_t rangeIndex = std::atomic_fetch_add_explicit(&buffer->NextRegionIndex, 1, std::memory_order_relaxed) % buffer->MaxRanges;
+            size_t rangeIndex = std::atomic_fetch_add_explicit(&buffer->NextRegionIndex, 1, std::memory_order_relaxed);
             assert(rangeIndex < buffer->MaxRanges);
-            Range* range = &buffer->Ranges[rangeIndex];
-            range->Offset = alignedOffset;
+
+            Range* range = &buffer->Ranges[rangeIndex % buffer->MaxRanges];
+            range->Offset = currentOffset;
             range->Size = size;
             range->Published.store(false, std::memory_order_relaxed);
 
-            if (outOffset) *outOffset = alignedOffset;
+            if (outOffset) *outOffset = currentOffset;
             if (outRegion) *outRegion = range;
+            LeaveCriticalSection(&buffer->RangeLock);
 
-            return &buffer->Memory[alignedOffset];
+            return &buffer->Memory[currentOffset];
         }
     }
 }
@@ -133,25 +132,8 @@ void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t alignme
 void ExportBufferPublish(ExportBufferHandle buffer, Range* range)
 {
     assert(buffer && range);
-
+    
     range->Published.store(true, std::memory_order_release);
-
-    size_t idx = buffer->PublishedRegionIndex.load(std::memory_order_acquire);
-    size_t published = buffer->PublishedOffset.load(std::memory_order_acquire);
-
-    while (idx != buffer->NextRegionIndex.load(std::memory_order_acquire))
-    {
-        Range* r = &buffer->Ranges[idx % buffer->MaxRanges];
-        if (!r->Published.load(std::memory_order_acquire)) {
-            break;
-        }
-
-        published += r->Size;
-        idx++;
-
-        buffer->PublishedRegionIndex.store(idx, std::memory_order_release);
-        buffer->PublishedOffset.store(published, std::memory_order_release);
-    }
 }
 
 size_t ExportBufferUsed(ExportBufferHandle buffer)
@@ -159,7 +141,24 @@ size_t ExportBufferUsed(ExportBufferHandle buffer)
     if (!buffer) {
         return 0;
     }
-    return buffer->PublishedOffset.load(std::memory_order_acquire);
+
+    size_t idx = buffer->PublishedRegionIndex;
+    size_t published = buffer->PublishedOffset;
+
+    while (idx != buffer->NextRegionIndex.load(std::memory_order_acquire))
+    {
+        Range* range = &buffer->Ranges[idx % buffer->MaxRanges];
+        if (!range->Published.load(std::memory_order_acquire)) {
+            break;
+        }
+
+        published += range->Size;
+        idx++;
+    }
+    buffer->PublishedRegionIndex = idx;
+    buffer->PublishedOffset = published;
+
+    return published;
 }
 
 void* ExportBufferData(ExportBufferHandle buffer)
@@ -185,7 +184,7 @@ void ExportBufferReset(ExportBufferHandle buffer)
     }
 
     buffer->ReservedOffset.store(0, std::memory_order_relaxed);
-    buffer->PublishedOffset.store(0, std::memory_order_relaxed);
     buffer->NextRegionIndex.store(0, std::memory_order_relaxed);
-    buffer->PublishedRegionIndex.store(0, std::memory_order_relaxed);
+    buffer->PublishedOffset = 0;
+    buffer->PublishedRegionIndex = 0;
 }

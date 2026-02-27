@@ -35,7 +35,7 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
     mat4 ObjectTransform;
     CreateMatrixTransform(tx, ty, tz, ObjectTransform);
 
-    static float angle = 0;
+    static float angle = 180;
     angle += 10 * DeltaTime;
     if (angle > 360.0f) angle -= 360.0f;
 
