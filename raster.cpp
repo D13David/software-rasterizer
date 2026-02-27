@@ -674,8 +674,8 @@ static void RunTriangleBinning_(int indexStart, int indexEnd, void* context)
 
         int minTileX = max(0, bounds[0] / TILE_WIDTH);
         int minTileY = max(0, bounds[1] / TILE_HEIGHT);
-        int maxTileX = max(TILE_COUNT_X - 1, bounds[2] / TILE_WIDTH);
-        int maxTileY = max(TILE_COUNT_Y - 1, bounds[3] / TILE_HEIGHT);
+        int maxTileX = min(TILE_COUNT_X - 1, bounds[2] / TILE_WIDTH);
+        int maxTileY = min(TILE_COUNT_Y - 1, bounds[3] / TILE_HEIGHT);
 
         for (int y = minTileY; y <= maxTileY; ++y)
         {
@@ -714,7 +714,7 @@ static void RunTriangleBinning(bool parallelize)
     }
 
     size_t numTrianglesWritten = (ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex)) / 3;
-    if (parallelize) ParallelFor(ThreadPool, 0, numTrianglesWritten, 32, &RunTriangleBinning_, NULL);
+    if (parallelize) ParallelFor(ThreadPool, 0, numTrianglesWritten, 16, &RunTriangleBinning_, NULL);
     else RunTriangleBinning_(0, numTrianglesWritten, NULL);
 }
 
