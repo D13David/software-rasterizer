@@ -27,8 +27,8 @@ using AtomicInt = std::atomic<int>;
 #define FB_WIDTH    Ctx.Out.Width
 #define FB_HEIGHT   Ctx.Out.Height
 
-#define TILE_WIDTH          32
-#define TILE_HEIGHT         32
+#define TILE_WIDTH          64
+#define TILE_HEIGHT         64
 #define TILE_COUNT_X        (FB_WIDTH / TILE_WIDTH)
 #define TILE_COUNT_Y        (FB_HEIGHT / TILE_HEIGHT)
 #define MAX_TRIS_PER_TILE   1024
