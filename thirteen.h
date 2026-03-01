@@ -241,7 +241,7 @@ namespace Thirteen
 
                 DWORD style = (WS_OVERLAPPEDWINDOW & ~(WS_THICKFRAME | WS_MAXIMIZEBOX));
                 RECT rect = { 0, 0, (LONG)width, (LONG)height };
-                AdjustWindowRect(&rect, style, FALSE);
+                AdjustWindowRectExForDpi(&rect, style, FALSE, 0, GetDpiForSystem());
 
                 hwnd = CreateWindowExW(
                     0,
@@ -305,7 +305,7 @@ namespace Thirteen
                     SetWindowLongW(hwnd, GWL_STYLE, style | WS_VISIBLE);
 
                     RECT rect = { 0, 0, (LONG)width, (LONG)height };
-                    AdjustWindowRect(&rect, style, FALSE);
+                    AdjustWindowRectExForDpi(&rect, style, FALSE, 0, GetDpiForSystem());
 
                     int screenWidth = GetSystemMetrics(SM_CXSCREEN);
                     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
@@ -325,7 +325,7 @@ namespace Thirteen
 
                 DWORD style = WS_OVERLAPPEDWINDOW & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
                 RECT rect = { 0, 0, (LONG)width, (LONG)height };
-                AdjustWindowRect(&rect, style, FALSE);
+                AdjustWindowRectExForDpi(&rect, style, FALSE, 0, GetDpiForSystem());
 
                 int screenWidth = GetSystemMetrics(SM_CXSCREEN);
                 int screenHeight = GetSystemMetrics(SM_CYSCREEN);
@@ -2114,6 +2114,12 @@ namespace Thirteen
                 return 0;
             }
             break;
+        }
+        case WM_GETMINMAXINFO:
+        {
+            MINMAXINFO* mmi = (MINMAXINFO*)lParam;
+            mmi->ptMaxTrackSize.y *= 2;
+            return 0;
         }
         }
         return DefWindowProcW(hwnd, msg, wParam, lParam);
