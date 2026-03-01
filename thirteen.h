@@ -222,6 +222,8 @@ namespace Thirteen
         Internal::height = height;
         Internal::Pixels = (uint8*)malloc(width * height * 4);
 
+        SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
         // Create window
         WNDCLASSEXW wc = {};
         wc.cbSize = sizeof(WNDCLASSEXW);
@@ -321,6 +323,7 @@ namespace Thirteen
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.Flags = tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+        swapChainDesc.Scaling = DXGI_SCALING_NONE;
 
         IDXGISwapChain1* swapChain1 = nullptr;
         HRESULT hr = factory->CreateSwapChainForHwnd(
