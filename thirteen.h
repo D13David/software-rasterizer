@@ -217,6 +217,8 @@ namespace Thirteen
 
             bool InitWindow(uint32 width, uint32 height)
             {
+                SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
                 WNDCLASSEXW wc = {};
                 wc.cbSize = sizeof(WNDCLASSEXW);
                 wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -490,6 +492,7 @@ namespace Thirteen
                 swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
                 swapChainDesc.SampleDesc.Count = 1;
                 swapChainDesc.Flags = tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+                swapChainDesc.Scaling = DXGI_SCALING_NONE;
 
                 IDXGISwapChain1* swapChain1 = nullptr;
                 HRESULT hr = factory->CreateSwapChainForHwnd(

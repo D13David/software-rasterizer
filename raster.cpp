@@ -24,11 +24,13 @@ using AtomicInt = std::atomic<int>;
 #   define DEBUG_VIEW 1
 #endif
 
+#define ENABLE_CHECKERBOARD_RENDERING 0
+
 #define FB_WIDTH    Ctx.Out.Width
 #define FB_HEIGHT   Ctx.Out.Height
 
 #define TILE_WIDTH          64
-#define TILE_HEIGHT         64
+#define TILE_HEIGHT         16
 #define TILE_COUNT_X        (FB_WIDTH / TILE_WIDTH)
 #define TILE_COUNT_Y        (FB_HEIGHT / TILE_HEIGHT)
 #define MAX_TRIS_PER_TILE   1024
@@ -78,6 +80,8 @@ static RasterContext Ctx;
 static ExportBufferHandle ExportBuffer;
 static ThreadPoolHandle ThreadPool;
 static ScreenTile Tiles[MAX_TILES];
+static uint32_t* ColorBuffer[2];
+static int Frame;
 
 void srInitialize(const RasterizerDesc& init)
 {
@@ -102,6 +106,13 @@ void srInitialize(const RasterizerDesc& init)
     size_t regionSize = THREAD_GROUP_SIZE * sizeof(ExportVertex) * 15; // upper bound for clipped vertices per region
     size_t maxRegions = (EXPORT_BUFFER_SIZE + regionSize - 1) / regionSize;
     ExportBuffer = ExportBufferCreate(EXPORT_BUFFER_SIZE, maxRegions);
+
+#if ENABLE_CHECKERBOARD_RENDERING
+    Frame = 0;
+    for (int i = 0; i < 2; ++i) {
+        ColorBuffer[i] = (uint32_t*)malloc(Ctx.Out.Width * Ctx.Out.Height * sizeof(uint32_t));
+    }
+#endif
 }
 
 void srDestroy()
@@ -121,12 +132,19 @@ void srSetTextureView(TextureView texture)
 
 void srClear(Color color)
 {
+    PROFILE_AUTO("Frame Buffer Clear");
+
     int bufferSize = FB_WIDTH * FB_HEIGHT;
 
+#if ENABLE_CHECKERBOARD_RENDERING
+    Color* colorBuffer = (Color*)ColorBuffer[Frame];
+#else
     Color* colorBuffer = (Color*)Ctx.Out.CB;
+#endif
+
     for (int i = 0; i < bufferSize; ++i) {
         colorBuffer[i] = color;
-    }
+    } 
 
     float* depthBuffer = (float*)Ctx.Out.DB;
     for (int i = 0; i < bufferSize; ++i) {
@@ -137,7 +155,11 @@ void srClear(Color color)
 void srDrawPixel(int x, int y, Color color)
 {
     assert(x < FB_WIDTH && y < FB_HEIGHT);
+#if ENABLE_CHECKERBOARD_RENDERING
+    ((Color*)ColorBuffer[Frame])[y * FB_WIDTH + x] = color;
+#else
     ((Color*)Ctx.Out.CB)[y * FB_WIDTH + x] = color;
+#endif
 }
 
 void srDrawLine(int x0, int y0, int x1, int y1, Color Color)
@@ -305,8 +327,8 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
     ComputeAABB(x0, y0, x1, y1, x2, y2, bounds);
 
     // clamp bounds to screen tile
-    int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_HEIGHT;
-    int tileMinY = (tileIndex / TILE_COUNT_X) * TILE_WIDTH;
+    int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
+    int tileMinY = (tileIndex / TILE_COUNT_X) * TILE_HEIGHT;
     int tileMaxX = min(tileMinX + TILE_WIDTH - 1, FB_WIDTH - 1);
     int tileMaxY = min(tileMinY + TILE_HEIGHT - 1, FB_HEIGHT - 1);
 
@@ -372,8 +394,15 @@ static void srDrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const
             float mipLevel = 0.5f * Log2Fast(rho2 * Ctx.Texture.Width * Ctx.Texture.Width);
             mipLevel = Clamp(mipLevel, 0.0f, (float)Ctx.Texture.MipLevels - 1);
 
+#if ENABLE_CHECKERBOARD_RENDERING
+            for (int hi = 0; hi < 2; ++hi)
+#else
             for (int i = 0; i < 4; ++i)
+#endif
             {
+#if ENABLE_CHECKERBOARD_RENDERING
+                int i = (hi << 1) | (hi ^ Frame);
+#endif
                 if (cx0[i] >= 0 && cx1[i] >= 0 && cx2[i] >= 0)
                 {
                     if (zndc[i] < depthBuffer[py[i] * FB_WIDTH + px[i]])
@@ -653,7 +682,7 @@ static void RunTriangleBinning_(int indexStart, int indexEnd, void* context)
 {
     ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer);
 
-    for (size_t i = indexStart; i < indexEnd; ++i)
+    for (int i = indexStart; i < indexEnd; ++i)
     {
         const ExportVertex& v0 = transformedVertices[i * 3 + 0];
         const ExportVertex& v1 = transformedVertices[i * 3 + 1];
@@ -713,7 +742,7 @@ static void RunTriangleBinning(bool parallelize)
         Tiles[i].NumTriangles = 0;
     }
 
-    size_t numTrianglesWritten = (ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex)) / 3;
+    int numTrianglesWritten = (int)(ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex)) / 3;
     if (parallelize) ParallelFor(ThreadPool, 0, numTrianglesWritten, 16, &RunTriangleBinning_, NULL);
     else RunTriangleBinning_(0, numTrianglesWritten, NULL);
 }
@@ -737,6 +766,31 @@ void srDrawTriangleList(const void* data, const uint16_t* indices, const InputEl
 
     // TODO: we probably don't need to reset the buffer here
     ExportBufferReset(ExportBuffer);
+}
+
+void srResolveFrameBuffer()
+{
+#if ENABLE_CHECKERBOARD_RENDERING
+    Frame = 1 - Frame;
+
+    Color* outCB = (Color*)Ctx.Out.CB;
+    int width = Ctx.Out.Width;
+    int height = Ctx.Out.Height;
+
+    for (int y = 0; y < height; y += 2)
+    {
+        int yIndex0 = y * width;
+        int yIndex1 = (y + 1) * width;
+
+        for (int x = 0; x < width; x += 2)
+        {
+            outCB[yIndex0 + x] = ColorBuffer[0][yIndex0 + x];
+            outCB[yIndex0 + x + 1] = ColorBuffer[1][yIndex0 + x + 1];
+            outCB[yIndex1 + x] = ColorBuffer[1][yIndex1 + x];
+            outCB[yIndex1 + x + 1] = ColorBuffer[0][yIndex1 + x + 1];
+        }
+    }
+#endif 
 }
 
 static int FormatToSize(InputElementFormat format)

@@ -18,8 +18,8 @@
 
 #define FPS_METER_WIDTH 200
 #define FPS_METER_HEIGHT 70
-#define FB_WIDTH 1280
-#define FB_HEIGHT 720
+#define FB_WIDTH 1920
+#define FB_HEIGHT 1080
 
 static DWORD LastTime;
 static float DeltaTime;
@@ -101,7 +101,7 @@ static void DrawFrame()
     srSetTextureFilter(TextureFilter::Unreal);
 
     for (int i = 0; i < numMeshes; ++i) {
-        DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 800);
+        DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 400);
     }
 
     FPSMeterUpdate();
@@ -112,12 +112,12 @@ static void DrawFrame()
 
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
-    uint8_t* frameBuffer = Thirteen::Init(FB_WIDTH, FB_HEIGHT);
+    uint8_t* frameBuffer = Thirteen::Init(FB_WIDTH, FB_HEIGHT, false);
     Thirteen::SetVSync(false);
 
     ProfilerInitialize();
 
-    float* depthBuffer = (float*)malloc(FB_WIDTH * FB_HEIGHT * sizeof(float));
+    float* depthBuffer = (float*)_aligned_malloc(FB_WIDTH * FB_HEIGHT * sizeof(float), 32);
 
     srInitialize({
             .BufferDesc = {
@@ -185,6 +185,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         ResetRenderStats();
         DrawFrame();
         DrawProfilerStats(10, 10, 300);
+        srResolveFrameBuffer();
 
         if (!Thirteen::Render()) {
             break;
@@ -192,7 +193,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
     }
 exit:
     if (depthBuffer) {
-        free(depthBuffer);
+        _aligned_free(depthBuffer);
     }
     for (int i = 0; i < numMeshes; ++i) {
         MeshFree(Gmesh[i]);

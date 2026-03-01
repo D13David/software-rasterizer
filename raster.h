@@ -16,6 +16,7 @@ void srDrawPixel(int x, int y, Color color);
 void srDrawLine(int x0, int y0, int x1, int y1, Color color);
 void srDrawRectangle(int x, int y, int w, int h, Color color);
 void srDrawTriangleList(const void* data, const uint16_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
+void srResolveFrameBuffer();
 
 int srInputStreamElementSize(const InputElement* elements, int numElements);
 const InputElement* srInputStreamElementByType(const InputElement* elements, int numElements, InputElementType type);
