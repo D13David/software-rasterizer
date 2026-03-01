@@ -55,4 +55,10 @@ struct TextureView
     size_t* MipOffsets;
 };
 
+enum DrawMode
+{
+    Solid,
+    Wireframe
+};
+
 #endif // PJD_RASTER_TYPES_H

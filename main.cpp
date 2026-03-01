@@ -15,11 +15,31 @@
 #include "uarch_loader.h"
 #include "profile.h"
 #include "render_stats.h"
+#include "font_render.h"
 
 #define FPS_METER_WIDTH 200
 #define FPS_METER_HEIGHT 70
 #define FB_WIDTH 1920
 #define FB_HEIGHT 1080
+
+typedef struct Command
+{
+    int                  KeyCode;
+    const char*          Help;
+    void(*CommandFunc)();
+} Command;
+
+bool WireFrameOverlay = false;
+bool ShowHelp = false;
+bool ShowPerformanceMetrics = true;
+
+static Command Commands[] =
+{
+    { VK_F1, "Toggle Help",              []() {ShowHelp = !ShowHelp; }},
+    { 'W',   "Toggle Wireframe Overlay", []() {WireFrameOverlay = !WireFrameOverlay; } },
+    { 'H',   "Toggle Perf Metrics",      []() {ShowPerformanceMetrics = !ShowPerformanceMetrics; } },
+    { 0, 0 }
+};
 
 static DWORD LastTime;
 static float DeltaTime;
@@ -99,15 +119,54 @@ static void DrawFrame()
     srClear(RGB(0, 0, 0));
 
     srSetTextureFilter(TextureFilter::Unreal);
-
+    
+    srSetDrawMode(DrawMode::Solid);
     for (int i = 0; i < numMeshes; ++i) {
         DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 400);
     }
 
-    FPSMeterUpdate();
-    FPSMeterDraw(0, FB_HEIGHT - 1 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
+    if (WireFrameOverlay)
+    {
+        srSetDrawMode(DrawMode::Wireframe);
+        for (int i = 0; i < numMeshes; ++i) {
+            DrawMesh(Gmesh[i], (i - numMeshes / 2) * 250, 0, 400);
+        }
+    }
 
-    DrawRenderStats(FB_WIDTH - 170, 10);
+    if (ShowPerformanceMetrics)
+    {
+        FPSMeterUpdate();
+        FPSMeterDraw(0, FB_HEIGHT - 1 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
+        DrawRenderStats(FB_WIDTH - 170, 10);
+    }
+
+    if (ShowHelp)
+    {
+        const int width  = 300;
+        const int height = 200;
+        int top = (FB_HEIGHT - height) / 2;
+        int left = (FB_WIDTH - width) / 2;
+        srDrawRectangle(left, top, width, height, COLOR(0.4, 0.4, 0.4));
+
+        int offset = top + 5;
+        for (int i = 0; Commands[i].Help; ++i)
+        {
+            char keyCodeName[128];
+            UINT scanCode = MapVirtualKey(Commands[i].KeyCode, MAPVK_VK_TO_VSC);
+            LONG result = GetKeyNameTextA(scanCode << 16, keyCodeName, sizeof(keyCodeName));
+            FntWriteString(Format("%-5s - %s", keyCodeName, Commands[i].Help), left + 5, offset), offset += 10;
+        }
+    }
+}
+
+static void HandleUserInput()
+{
+    for (int i = 0; Commands[i].Help; ++i)
+    {
+        if (Thirteen::GetKey(Commands[i].KeyCode) && !Thirteen::GetKeyLastFrame(Commands[i].KeyCode)) {
+            Commands[i].CommandFunc();
+        }
+    }
 }
 
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
@@ -181,10 +240,16 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         DeltaTime = (currentTime - LastTime) / 1000.0f;
         LastTime = currentTime;
 
+        HandleUserInput();
+
         ProfilerReset();
         ResetRenderStats();
         DrawFrame();
-        DrawProfilerStats(10, 10, 300);
+
+        if (ShowPerformanceMetrics) {
+            DrawProfilerStats(10, 10, 300);
+        }
+
         srResolveFrameBuffer();
 
         if (!Thirteen::Render()) {

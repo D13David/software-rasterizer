@@ -24,7 +24,7 @@ using AtomicInt = std::atomic<int>;
 #   define DEBUG_VIEW 1
 #endif
 
-#define ENABLE_CHECKERBOARD_RENDERING 0
+#define ENABLE_CHECKERBOARD_RENDERING 1
 
 #define FB_WIDTH    Ctx.Out.Width
 #define FB_HEIGHT   Ctx.Out.Height
@@ -49,6 +49,7 @@ typedef struct RasterContext
     } Out;
     TextureFilter   Filter;
     TextureView     Texture;
+    DrawMode        DrawMode;
 } RasterContext;
 
 typedef struct ExportVertex
@@ -128,6 +129,11 @@ void srSetTextureFilter(TextureFilter filter)
 void srSetTextureView(TextureView texture)
 {
     Ctx.Texture = texture;
+}
+
+void srSetDrawMode(DrawMode drawMode)
+{
+    Ctx.DrawMode = drawMode;
 }
 
 void srClear(Color color)
@@ -634,9 +640,9 @@ static void RunVertexTransform_(int start, int end, void* context)
                 ClipVertex v1 = clipped[i];
                 ClipVertex v2 = clipped[i + 1];
 
-                ClipToScreen(v0.ClipSpacePos, FB_WIDTH, FB_HEIGHT, v0.ClipSpacePos);
-                ClipToScreen(v1.ClipSpacePos, FB_WIDTH, FB_HEIGHT, v1.ClipSpacePos);
-                ClipToScreen(v2.ClipSpacePos, FB_WIDTH, FB_HEIGHT, v2.ClipSpacePos);
+                ClipToScreen(v0.ClipSpacePos, FB_WIDTH-1, FB_HEIGHT-1, v0.ClipSpacePos);
+                ClipToScreen(v1.ClipSpacePos, FB_WIDTH-1, FB_HEIGHT-1, v1.ClipSpacePos);
+                ClipToScreen(v2.ClipSpacePos, FB_WIDTH-1, FB_HEIGHT-1, v2.ClipSpacePos);
 
 #define EXPORT_VERTEX(idx, vert) do {                                   \
         float invW = 1.0f / vert.ClipSpacePos[3];                       \
@@ -734,6 +740,21 @@ static void RunRasterizeTriangles(bool parallelize)
     else RunRasterizeTriangles_(0, MAX_TILES, NULL);
 }
 
+static void RunDrawTrianglesWireframe(Color color)
+{
+    int numVertices = (ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex));
+    ExportVertex* vertexStart = (ExportVertex*)ExportBufferData(ExportBuffer);
+    for (int i = 0; i < numVertices; i += 3)
+    {
+        ExportVertex* v0 = &vertexStart[i+0];
+        ExportVertex* v1 = &vertexStart[i+1];
+        ExportVertex* v2 = &vertexStart[i+2];
+        srDrawLine(v0->ScreenX, v0->ScreenY, v1->ScreenX, v1->ScreenY, color);
+        srDrawLine(v1->ScreenX, v1->ScreenY, v2->ScreenX, v2->ScreenY, color);
+        srDrawLine(v2->ScreenX, v2->ScreenY, v0->ScreenX, v0->ScreenY, color);
+    }
+}
+
 static void RunTriangleBinning(bool parallelize)
 {
     PROFILE_AUTO("Triangle Binning");
@@ -760,9 +781,15 @@ void srDrawTriangleList(const void* data, const uint16_t* indices, const InputEl
 
     RunVertexTransform(parallel, numPrimitives, &command);
 
-    RunTriangleBinning(parallel);
-
-    RunRasterizeTriangles(parallel);
+    if (Ctx.DrawMode == Solid)
+    {
+        RunTriangleBinning(parallel);
+        RunRasterizeTriangles(parallel);
+    }
+    else
+    {
+        RunDrawTrianglesWireframe(COLOR(0.75, 0.75, 0.75));
+    }
 
     // TODO: we probably don't need to reset the buffer here
     ExportBufferReset(ExportBuffer);

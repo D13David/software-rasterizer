@@ -10,6 +10,7 @@ void srDestroy();
 
 void srSetTextureFilter(TextureFilter filter);
 void srSetTextureView(TextureView texture);
+void srSetDrawMode(DrawMode drawMode);
 
 void srClear(Color color);
 void srDrawPixel(int x, int y, Color color);
