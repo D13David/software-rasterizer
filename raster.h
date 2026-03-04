@@ -5,12 +5,27 @@
 #include "raster_common.h"
 #include "mathlib.h"
 
+#define DEBUG_VIEW 1
+
+#if DEBUG_VIEW
+typedef enum DebugMode
+{
+    DM_None,
+    DM_TileClassification,
+    DM_FaceDerivatives,
+    DM_FaceMipMapLevel
+};
+#endif
+
 void RasterizerInitialize(const RasterizerDesc& init);
 void RasterizerDestroy();
 
 void SetTextureFilter(TextureFilter filter);
 void SetTextureView(TextureView texture);
 void SetDrawMode(DrawMode drawMode);
+#if DEBUG_VIEW
+void SetDebugMode(DebugMode mode);
+#endif
 
 void Clear(Color color);
 void DrawPixel(int x, int y, Color color);

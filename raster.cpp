@@ -27,6 +27,10 @@ void RasterizerInitialize(const RasterizerDesc& init)
         .DB = init.DepthBufferPtr
     };
 
+#if DEBUG_VIEW
+    Ctx.DebugMode = DM_None;
+#endif
+
     SYSTEM_INFO systemInfo;
     GetSystemInfo(&systemInfo);
 #if 0
@@ -75,6 +79,13 @@ void SetDrawMode(DrawMode drawMode)
 {
     Ctx.DrawMode = drawMode;
 }
+
+#if DEBUG_VIEW
+void SetDebugMode(DebugMode mode)
+{
+    Ctx.DebugMode = mode;
+}
+#endif
 
 void Clear(Color color)
 {
@@ -224,7 +235,9 @@ void ResolveFrameBuffer()
     PROFILE_AUTO("Resolve");
 
 #if DEBUG_TILE_CLASSIFICATION
-    DebugViewTileCoverage();
+    if (Ctx.DebugMode == DM_TileClassification) {
+        DebugViewTileCoverage();
+    }
 #endif 
 
     Color* outCB = (Color*)Ctx.Out.CB;

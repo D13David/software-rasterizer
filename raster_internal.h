@@ -11,17 +11,19 @@ using AtomicInt = std::atomic<int>;
 // enable tiled framebuffer layout
 #define ENABLE_TILED_FRAMEBUFFER_LAYOUT 1
 
-// enable for rendering color coded mip-map levels
-#define DEBUG_MIP_LEVELS 0
+#if DEBUG_VIEW
+    // enable for rendering color coded mip-map levels
+    #define DEBUG_MIP_LEVELS 1
 
-// enable for rendering screenspace derivatives accross polygons
-#define DEBUG_SCREENSPACE_DERIVATIVES 0
+    // enable for rendering screenspace derivatives accross polygons
+    #define DEBUG_SCREENSPACE_DERIVATIVES 1
 
-// enable tile classification drawing
-#define DEBUG_TILE_CLASSIFICATION 0
-
-#if DEBUG_MIP_LEVELS || DEBUG_SCREENSPACE_DERIVATIVES
-#   define DEBUG_VIEW 1
+    // enable tile classification drawing
+    #define DEBUG_TILE_CLASSIFICATION 1
+#else
+    #define DEBUG_MIP_LEVELS 0
+    #define DEBUG_SCREENSPACE_DERIVATIVES 0
+    #define DEBUG_TILE_CLASSIFICATION 0
 #endif
 
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT && ENABLE_CHECKERBOARD_RENDERING
@@ -56,6 +58,9 @@ typedef struct RasterContext
     TextureFilter   Filter;
     TextureView     Texture;
     DrawMode        DrawMode;
+#if DEBUG_VIEW
+    DebugMode       DebugMode;
+#endif
 } RasterContext;
 
 typedef struct ScreenTile

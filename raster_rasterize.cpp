@@ -158,21 +158,42 @@ typedef struct Interpolants
 
 #define I(idx, attr) interpolants[idx].##attr
 
-static PJD_INLINE Color ShadePixel(float mipLevel, const Interpolants* interp)
+#if DEBUG_VIEW
+typedef struct DebugParams
 {
-#if DEBUG_SCREENSPACE_DERIVATIVES
-    Color color = DebugViewScreenSpaceDerivatives(dudx, dudy, dvdx, dvdy);
-#elif DEBUG_MIP_LEVELS
-    Color color = DebugViewMipLevel(mipLevel);
-#else
-    Color color = SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
+    float dudx;
+    float dudy;
+    float dvdx;
+    float dvdy;
+}; 
 #endif
 
-    return color;
+#if DEBUG_VIEW
+#define DEBUG_VIEW_ONLY_ARG(...) ,__VA_ARGS__
+#else
+#define DEBUG_VIEW_ONLY_ARG(...)
+#endif
+
+static PJD_INLINE Color ShadePixel(float mipLevel, const Interpolants* interp DEBUG_VIEW_ONLY_ARG(DebugParams params))
+{
+#if DEBUG_VIEW
+    switch (Ctx.DebugMode)
+    {
+#if DEBUG_MIP_LEVELS
+    case DM_FaceMipMapLevel: return DebugViewMipLevel(mipLevel);
+#endif
+
+#if DEBUG_SCREENSPACE_DERIVATIVES
+    case DM_FaceDerivatives: return DebugViewScreenSpaceDerivatives(params.dudx, params.dudy, params.dvdx, params.dvdy);
+#endif 
+    }
+#endif
+
+    return SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
 }
 
 template<bool EdgeTest>
-static PJD_INLINE void RasterizeQuad(int x, int y, float mipLevel, const Interpolants interpolants[4], int bufferOffset = 0)
+static PJD_INLINE void RasterizeQuad(int x, int y, float mipLevel, const Interpolants interpolants[4] DEBUG_VIEW_ONLY_ARG(DebugParams params), int bufferOffset = 0)
 {
     float* depthBuffer = (float*)Ctx.Out.DB;
 
@@ -199,7 +220,7 @@ static PJD_INLINE void RasterizeQuad(int x, int y, float mipLevel, const Interpo
         {
             depthBuffer[index] = I(i,z);
 
-            WriteFramebufferDirect(index, ShadePixel(mipLevel, &interpolants[i]));
+            WriteFramebufferDirect(index, ShadePixel(mipLevel, &interpolants[i] DEBUG_VIEW_ONLY_ARG(params)));
         }
     }
 }
@@ -275,7 +296,12 @@ static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const Expor
             int posX = x;
             int posY = y;
 #endif
-            RasterizeQuad<!fullyCovered>(posX, posY, mipLevel, interpolants, tileOffset);
+
+#if DEBUG_VIEW
+            DebugParams debugParams = { dudx, dudy, dvdx, dvdy };
+#endif
+
+            RasterizeQuad<!fullyCovered>(posX, posY, mipLevel, interpolants DEBUG_VIEW_ONLY_ARG(debugParams), tileOffset);
 
             cx0Row += 2 * A12;
             cx1Row += 2 * A20;
