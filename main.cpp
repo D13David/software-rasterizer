@@ -143,6 +143,8 @@ static void DrawFrame()
         DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 400);
     }
 
+    ResolveFrameBuffer();
+
     if (ShowPerformanceMetrics)
     {
         FPSMeterUpdate();
@@ -267,8 +269,6 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         if (ShowPerformanceMetrics) {
             DrawProfilerStats(10, 10, 300);
         }
-
-        ResolveFrameBuffer();
 
         if (!Thirteen::Render()) {
             break;

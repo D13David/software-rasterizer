@@ -10,7 +10,7 @@ void DrawLine(int x0, int y0, int x1, int y1, Color Color)
 
     while (1)
     {
-        DrawPixel(x0, y0, Color);
+        DrawPixelToScreen(x0, y0, Color);
 
         if (x0 == x1 && y0 == y1) {
             break;
@@ -37,7 +37,7 @@ void DrawRectangle(int posX, int posY, int w, int h, Color color)
     {
         for (int x = 0; x < w; x++)
         {
-            DrawPixel(posX + x, posY + y, color);
+            DrawPixelToScreen(posX + x, posY + y, color);
         }
     }
 }
@@ -65,7 +65,7 @@ static void drawHLine(int x1, int x2, int y, uint32_t color, int style) {
     for (int x = x1; x <= x2; x++) {
         int bit = 1 << (7 - (x & 7));  // pattern column (wrap every 8)
         if (mask & bit)
-            DrawPixel(x, y, color);
+            DrawPixelToScreen(x, y, color);
     }
 }
 
@@ -81,10 +81,10 @@ void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, int style
         drawHLine(cx - x, cx + x, cy + y, color, style);
         drawHLine(cx - x, cx + x, cy - y, color, style);
 
-        DrawPixel(cx + x, cy + y, color);
-        DrawPixel(cx - x, cy + y, color);
-        DrawPixel(cx + x, cy - y, color);
-        DrawPixel(cx - x, cy - y, color);
+        DrawPixelToScreen(cx + x, cy + y, color);
+        DrawPixelToScreen(cx - x, cy + y, color);
+        DrawPixelToScreen(cx + x, cy - y, color);
+        DrawPixelToScreen(cx - x, cy - y, color);
 
         x++;
         px += twoRy2;
@@ -102,10 +102,10 @@ void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, int style
         drawHLine(cx - x, cx + x, cy + y, color, style);
         drawHLine(cx - x, cx + x, cy - y, color, style);
 
-        DrawPixel(cx + x, cy + y, color);
-        DrawPixel(cx - x, cy + y, color);
-        DrawPixel(cx + x, cy - y, color);
-        DrawPixel(cx - x, cy - y, color);
+        DrawPixelToScreen(cx + x, cy + y, color);
+        DrawPixelToScreen(cx - x, cy + y, color);
+        DrawPixelToScreen(cx + x, cy - y, color);
+        DrawPixelToScreen(cx - x, cy - y, color);
 
         y--;
         py -= twoRx2;

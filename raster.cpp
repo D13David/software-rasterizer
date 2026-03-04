@@ -4,6 +4,7 @@
 #include "thread_pool.h"
 #include "export_buffer.h"
 #include "profile.h"
+#include "parallel_for.h"
 
 #define EXPORT_BUFFER_SIZE (32 * 1024 * 1024)
 
@@ -105,6 +106,12 @@ void DrawPixel(int x, int y, Color color)
     WriteFramebufferDirect(offset, color);
 }
 
+void DrawPixelToScreen(int x, int y, Color color)
+{
+    assert(x < FB_WIDTH && y < FB_HEIGHT);
+    ((Color*)Ctx.Out.CB)[y*FB_WIDTH+x] = color;
+}
+
 Color SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
 {
     TextureView texture = Ctx.Texture;
@@ -182,18 +189,17 @@ void DrawTriangleList(const void* data, const uint16_t* indices, const InputElem
     ExportBufferReset(ExportBuffer);
 }
 
-void ResolveFrameBuffer()
+static void ResolveTiledFrameBuffer(int startTile, int endTile, void* context)
 {
-    Color* outCB = (Color*)Ctx.Out.CB;
-
-#if ENABLE_TILED_FRAMEBUFFER_LAYOUT
     const int PixelsPerTile = TILE_WIDTH * TILE_HEIGHT;
 
-    for (int tileIndex = 0; tileIndex < TILE_COUNT_X*TILE_COUNT_Y; ++tileIndex)
+    Color* outCB = (Color*)Ctx.Out.CB;
+    const uint32_t* TileBuffer = ColorBuffer[Frame] + startTile * PixelsPerTile;
+
+    for (int tileIndex = startTile; tileIndex < endTile; ++tileIndex)
     {
         int tileOriginX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
         int tileOriginY = (tileIndex / TILE_COUNT_X) * TILE_HEIGHT;
-        const uint32_t* TileBuffer = ColorBuffer[Frame] + tileIndex * PixelsPerTile;
 
         for (int pos = 0; pos < PixelsPerTile; ++pos)
         {
@@ -201,7 +207,18 @@ void ResolveFrameBuffer()
             int py = tileOriginY + TileIndices[pos][1];
             outCB[py * FB_WIDTH + px] = TileBuffer[pos];
         }
+
+        TileBuffer += PixelsPerTile;
     }
+}
+
+void ResolveFrameBuffer()
+{
+    PROFILE_AUTO("Resolve");
+
+    Color* outCB = (Color*)Ctx.Out.CB;
+#if ENABLE_TILED_FRAMEBUFFER_LAYOUT
+    ParallelFor(ThreadPool, 0, TILE_COUNT_X*TILE_COUNT_Y, 8, ResolveTiledFrameBuffer, NULL);
 #elif ENABLE_CHECKERBOARD_RENDERING
     Frame = 1 - Frame;
     int width = Ctx.Out.Width;
