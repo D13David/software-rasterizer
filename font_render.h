@@ -278,7 +278,7 @@ PJD_INLINE void FntWriteChar(int posX, int posY, char c, uint32_t color = 0xFFFF
         for (int x = 0; x < 8; x++)
         {
             if (bits & (1 << (7 - x))) {
-                srDrawPixel(posX + x, posY + y, color);
+                DrawPixel(posX + x, posY + y, color);
             }
         }
     }

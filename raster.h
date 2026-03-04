@@ -5,22 +5,30 @@
 #include "raster_common.h"
 #include "mathlib.h"
 
-void srInitialize(const RasterizerDesc& init);
-void srDestroy();
+void RasterizerInitialize(const RasterizerDesc& init);
+void RasterizerDestroy();
 
-void srSetTextureFilter(TextureFilter filter);
-void srSetTextureView(TextureView texture);
-void srSetDrawMode(DrawMode drawMode);
+void SetTextureFilter(TextureFilter filter);
+void SetTextureView(TextureView texture);
+void SetDrawMode(DrawMode drawMode);
 
-void srClear(Color color);
-void srDrawPixel(int x, int y, Color color);
-void srDrawLine(int x0, int y0, int x1, int y1, Color color);
-void srDrawRectangle(int x, int y, int w, int h, Color color);
-void srDrawTriangleList(const void* data, const uint16_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
-void srResolveFrameBuffer();
+void Clear(Color color);
+void DrawPixel(int x, int y, Color color);
+void DrawTriangleList(const void* data, const uint16_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
+void ResolveFrameBuffer();
 
-int srInputStreamElementSize(const InputElement* elements, int numElements);
-const InputElement* srInputStreamElementByType(const InputElement* elements, int numElements, InputElementType type);
-const void* srInputStreamElement(const void* stream, InputElement element, int stride, int index);
+/*----------------------------------------------------------------------------
+    2D Drawing
+----------------------------------------------------------------------------*/
+void DrawLine(int x0, int y0, int x1, int y1, Color color);
+void DrawRectangle(int x, int y, int w, int h, Color color);
+void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, int style);
+
+/*----------------------------------------------------------------------------
+    Input Assembler
+----------------------------------------------------------------------------*/
+int InputStreamElementSize(const InputElement* elements, int numElements);
+const InputElement* InputStreamElementByType(const InputElement* elements, int numElements, InputElementType type);
+const void* InputStreamElement(const void* stream, InputElement element, int stride, int index);
 
 #endif // PJD_RASTER_H

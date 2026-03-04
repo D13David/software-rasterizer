@@ -81,9 +81,9 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
     {
         const Surface* surface = &mesh->Surfaces[i];
 
-        srSetTextureView(surface->Texture);
+        SetTextureView(surface->Texture);
 
-        srDrawTriangleList
+        DrawTriangleList
         (
             mesh->NumAnimSeqs == 0 ? mesh->VertexBuffer : mesh->FrameCache,
             surface->IndexBuffer,
@@ -93,6 +93,24 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
             WorldViewProj, 
             true
         );
+
+        if (WireFrameOverlay)
+        {
+            SetDrawMode(DrawMode::Wireframe);
+
+            DrawTriangleList
+            (
+                mesh->NumAnimSeqs == 0 ? mesh->VertexBuffer : mesh->FrameCache,
+                surface->IndexBuffer,
+                mesh->InputDesc,
+                mesh->NumInputElements,
+                surface->NumPrimitives,
+                WorldViewProj,
+                true
+            );
+
+            SetDrawMode(DrawMode::Solid);
+        }
     }
 }
 
@@ -116,21 +134,13 @@ static void DrawFrame()
         }
     }
 
-    srClear(RGB(0, 0, 0));
+    Clear(RGB(0, 0, 0));
 
-    srSetTextureFilter(TextureFilter::Unreal);
+    SetTextureFilter(TextureFilter::Unreal);
     
-    srSetDrawMode(DrawMode::Solid);
+    SetDrawMode(DrawMode::Solid);
     for (int i = 0; i < numMeshes; ++i) {
         DrawMesh(Gmesh[i], (i - numMeshes/2)*250, 0, 400);
-    }
-
-    if (WireFrameOverlay)
-    {
-        srSetDrawMode(DrawMode::Wireframe);
-        for (int i = 0; i < numMeshes; ++i) {
-            DrawMesh(Gmesh[i], (i - numMeshes / 2) * 250, 0, 400);
-        }
     }
 
     if (ShowPerformanceMetrics)
@@ -146,7 +156,7 @@ static void DrawFrame()
         const int height = 200;
         int top = (FB_HEIGHT - height) / 2;
         int left = (FB_WIDTH - width) / 2;
-        srDrawRectangle(left, top, width, height, COLOR(0.4, 0.4, 0.4));
+        DrawRectangle(left, top, width, height, COLOR(0.4, 0.4, 0.4));
 
         int offset = top + 5;
         for (int i = 0; Commands[i].Help; ++i)
@@ -157,6 +167,14 @@ static void DrawFrame()
             FntWriteString(Format("%-5s - %s", keyCodeName, Commands[i].Help), left + 5, offset), offset += 10;
         }
     }
+}
+
+static void DrawScene2D()
+{
+    Clear(0);
+
+    PROFILE_AUTO("Frame");
+    DrawEllipseFilled(FB_WIDTH/2, FB_HEIGHT/2, 100, 100, COLOR(1, 1, 1), 6);
 }
 
 static void HandleUserInput()
@@ -178,7 +196,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
     float* depthBuffer = (float*)_aligned_malloc(FB_WIDTH * FB_HEIGHT * sizeof(float), 32);
 
-    srInitialize({
+    RasterizerInitialize({
             .BufferDesc = {
                 .Width = FB_WIDTH,
                 .Height = FB_HEIGHT
@@ -192,7 +210,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
     auto archive = OpenArchive("../Unreal/System/UnrealI.u");
     if (archive)
     {
-        DumpExportTable(archive, "Mesh");
+        //DumpExportTable(archive, "Mesh");
         struct LoadInfo
         {
             const char* name;
@@ -250,7 +268,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
             DrawProfilerStats(10, 10, 300);
         }
 
-        srResolveFrameBuffer();
+        ResolveFrameBuffer();
 
         if (!Thirteen::Render()) {
             break;

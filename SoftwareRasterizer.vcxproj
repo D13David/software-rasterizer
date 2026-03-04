@@ -138,6 +138,10 @@
     <ClCompile Include="profile.cpp" />
     <ClCompile Include="raster.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="raster_2d.cpp" />
+    <ClCompile Include="raster_binning.cpp" />
+    <ClCompile Include="raster_rasterize.cpp" />
+    <ClCompile Include="raster_vtransf.cpp" />
     <ClCompile Include="render_stats.cpp" />
     <ClCompile Include="texture_loader.cpp" />
     <ClCompile Include="thread_pool.cpp" />
@@ -159,6 +163,7 @@
     <ClInclude Include="profile.h" />
     <ClInclude Include="raster.h" />
     <ClInclude Include="raster_common.h" />
+    <ClInclude Include="raster_internal.h" />
     <ClInclude Include="raster_types.h" />
     <ClInclude Include="render_stats.h" />
     <ClInclude Include="stb_image_resize2.h" />

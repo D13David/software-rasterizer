@@ -64,6 +64,18 @@
     <ClCompile Include="render_stats.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
+    <ClCompile Include="raster_2d.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="raster_vtransf.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="raster_binning.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="raster_rasterize.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="raster.h">
@@ -127,6 +139,9 @@
       <Filter>common</Filter>
     </ClInclude>
     <ClInclude Include="render_stats.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="raster_internal.h">
       <Filter>renderer</Filter>
     </ClInclude>
   </ItemGroup>

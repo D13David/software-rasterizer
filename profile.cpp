@@ -148,10 +148,10 @@ void DrawProfilerStats(int posX, int posY, int width)
 
         offsetY += 8;
 
-        srDrawRectangle(posX, offsetY - 4, totalX - posX, 8, COLOR(0.75f, 0.75f, 0.75f));
-        srDrawLine(minX, offsetY - 4, minX, offsetY + 4, COLOR(0, 1, 0));
-        srDrawLine(maxX, offsetY - 4, maxX, offsetY + 4, COLOR(1, 0, 0));
-        srDrawLine(avgX, offsetY - 4, avgX, offsetY + 4, COLOR(0, 0, 1));
+        DrawRectangle(posX, offsetY - 4, totalX - posX, 8, COLOR(0.75f, 0.75f, 0.75f));
+        DrawLine(minX, offsetY - 4, minX, offsetY + 4, COLOR(0, 1, 0));
+        DrawLine(maxX, offsetY - 4, maxX, offsetY + 4, COLOR(1, 0, 0));
+        DrawLine(avgX, offsetY - 4, avgX, offsetY + 4, COLOR(0, 0, 1));
 
         FntWriteString(Format("%.03fms (%.03fms)", total, avg), posX + width, offsetY - 4);
     }

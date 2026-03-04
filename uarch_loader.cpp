@@ -483,11 +483,11 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
         animSeq->Rate = Read<float>(archive->FilePointer);
 
 #if _DEBUG
-        Trace("#%d: %s (%d, %d, %f)\n", i, 
+        /*Trace("#%d: %s (%d, %d, %f)\n", i, 
             animSeq->Name,
             animSeq->StartFrame,
             animSeq->NumFrames,
-            animSeq->Rate);
+            animSeq->Rate);*/
 #endif
     }
 

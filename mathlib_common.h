@@ -78,6 +78,38 @@ PJD_INLINE float Log2Fast(float x)
 #endif
 }
 
+PJD_INLINE int RandomRange(int min, int max)
+{
+    return rand() % (max - min + 1) + min;
+}
+
+PJD_INLINE int Encode6BitMorton(int x, int y)
+{
+    auto split1by1 = [](int value)
+        {
+            value &= 0x3F;
+            value = (value | (value << 4)) & 0x0F0F;
+            value = (value | (value << 2)) & 0x3333;
+            value = (value | (value << 1)) & 0x5555;
+            return value;
+        };
+    return split1by1(x) | (split1by1(y) << 1);
+}
+
+PJD_INLINE void Decode6BitMorton(int code, int* x, int* y)
+{
+    auto compact1by1 = [](int value)
+        {
+            value &= 0x555;
+            value = (value ^ (value >> 1)) & 0x333;
+            value = (value ^ (value >> 2)) & 0x0F0F;
+            value = (value ^ (value >> 4)) & 0x3F;
+            return value;
+        };
+    *x = compact1by1(code);
+    *y = compact1by1(code >> 1);
+}
+
 //=============================================================================
 // Affine Transformation Functionality
 //=============================================================================

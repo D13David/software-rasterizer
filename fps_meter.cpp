@@ -56,7 +56,7 @@ void FPSMeterDraw(int x, int y, int width, int height)
     for (int i = 0; i < 4; ++i)
     {
         int posY = markers[i] * height / FPS_MAX;
-        srDrawLine(x, offsetY - posY, width, offsetY - posY, COLOR(1, 1, 1));
+        DrawLine(x, offsetY - posY, width, offsetY - posY, COLOR(1, 1, 1));
     }
 
     if (context.size < 2) {
@@ -84,7 +84,7 @@ void FPSMeterDraw(int x, int y, int width, int height)
         if (value0 > FPS_MAX) value0 = FPS_MAX;
         if (value1 > FPS_MAX) value1 = FPS_MAX;
 
-        srDrawLine(
+        DrawLine(
                     currentX, offsetY - (value0 * height) / FPS_MAX,
                     nextX,    offsetY - (value1 * height) / FPS_MAX,
                     value1 < 60 ? COLOR(1, 0, 0) : COLOR(0, 1, 0)
