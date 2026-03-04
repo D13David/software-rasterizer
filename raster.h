@@ -38,7 +38,7 @@ void ResolveFrameBuffer();
 ----------------------------------------------------------------------------*/
 void DrawLine(int x0, int y0, int x1, int y1, Color color);
 void DrawRectangle(int x, int y, int w, int h, Color color);
-void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, int style);
+void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, FillStyle style);
 
 /*----------------------------------------------------------------------------
     Input Assembler

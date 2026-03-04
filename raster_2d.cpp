@@ -48,28 +48,29 @@ uint8_t patterns[][8] =
     {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, // SOLID_FILL
     {0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00}, // LINE_FILL
     {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80}, // LTSLASH_FILL
-    {0x0f, 0x3c, 0xf0, 0xc3, 0x0f, 0x3c, 0xf0, 0xc3}, // SLASH_FILL
-    // BKSLASH_FILL
-    // LTBKSLASH_FILL
-    // HATCH_FILL
+    {0x83, 0x07, 0x0e, 0x1c, 0x38, 0x70, 0xe0, 0xc1}, // SLASH_FILL
+    {0xf0, 0x78, 0x3c, 0x1e, 0x0f, 0x87, 0xc3, 0xe1}, // BKSLASH_FILL
+    {0xa5, 0xd2, 0x69, 0xb4, 0x5a, 0x2d, 0x96, 0x4b}, // LTBKSLASH_FILL
+    {0xff, 0x88, 0x88, 0x88, 0xff, 0x88, 0x88, 0x88}, // HATCH_FILL
     {0x81, 0x42, 0x24, 0x18, 0x18, 0x24, 0x42, 0x81}, // XHATCH_FILL
-    {0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55}, // INTERLEAVE_FILL
-    // WIDE_DOT_FILL
-    // CLOSE_DOT_FILL
+    {0xcc, 0x33, 0xcc, 0x33, 0xcc, 0x33, 0xcc, 0x33}, // INTERLEAVE_FILL
+    {0x08, 0x00, 0x80, 0x00, 0x08, 0x00, 0x80, 0x00}, // WIDE_DOT_FILL
+    {0x88, 0x00, 0x22, 0x00, 0x88, 0x00, 0x22, 0x00}  // CLOSE_DOT_FILL
 };
 
-static void drawHLine(int x1, int x2, int y, uint32_t color, int style) {
-    int patY = y & 7;  // pattern row (wrap every 8)
-    uint8_t mask = patterns[style][patY];
+static void FillHorizontalLine(int x1, int x2, int y, uint32_t color, int style) 
+{
+    uint8_t mask = patterns[style][y & 7];
 
-    for (int x = x1; x <= x2; x++) {
-        int bit = 1 << (7 - (x & 7));  // pattern column (wrap every 8)
-        if (mask & bit)
+    for (int x = x1; x <= x2; x++) 
+    {
+        if (mask & (1 << (7 - (x & 7)))) {
             DrawPixelToScreen(x, y, color);
+        }
     }
 }
 
-void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, int style) 
+void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, FillStyle style) 
 {
     int x = 0, y = ry;
     long rx2 = rx * rx, ry2 = ry * ry;
@@ -77,9 +78,10 @@ void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, int style
     long px = 0, py = twoRx2 * y;
 
     long p = ry2 - (rx2 * ry) + (rx2 / 4);
-    while (px < py) {
-        drawHLine(cx - x, cx + x, cy + y, color, style);
-        drawHLine(cx - x, cx + x, cy - y, color, style);
+    while (px < py) 
+    {
+        FillHorizontalLine(cx - x, cx + x, cy + y, color, style);
+        FillHorizontalLine(cx - x, cx + x, cy - y, color, style);
 
         DrawPixelToScreen(cx + x, cy + y, color);
         DrawPixelToScreen(cx - x, cy + y, color);
@@ -88,8 +90,9 @@ void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, int style
 
         x++;
         px += twoRy2;
-        if (p < 0)
+        if (p < 0) {
             p += ry2 + px;
+        }
         else {
             y--;
             py -= twoRx2;
@@ -98,9 +101,10 @@ void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, int style
     }
 
     p = ry2 * (x + 0.5) * (x + 0.5) + rx2 * (y - 1) * (y - 1) - rx2 * ry2;
-    while (y >= 0) {
-        drawHLine(cx - x, cx + x, cy + y, color, style);
-        drawHLine(cx - x, cx + x, cy - y, color, style);
+    while (y >= 0) 
+    {
+        FillHorizontalLine(cx - x, cx + x, cy + y, color, style);
+        FillHorizontalLine(cx - x, cx + x, cy - y, color, style);
 
         DrawPixelToScreen(cx + x, cy + y, color);
         DrawPixelToScreen(cx - x, cy + y, color);
@@ -109,9 +113,11 @@ void DrawEllipseFilled(int cx, int cy, int rx, int ry, uint32_t color, int style
 
         y--;
         py -= twoRx2;
-        if (p > 0)
+        if (p > 0) {
             p += rx2 - py;
-        else {
+        }
+        else 
+        {
             x++;
             px += twoRy2;
             p += rx2 - py + px;
