@@ -10,8 +10,10 @@
 #define DEG2RAD(d)  (((d)*PJD_PI) / 180.0f)
 #define RAD2DEG(d)  (((d)*180.0f) / PJD_PI
 
-#define max(a,b) (((a) > (b)) ? (a) : (b))
-#define min(a,b) (((a) < (b)) ? (a) : (b))
+#define max(a,b)    (((a) > (b)) ? (a) : (b))
+#define min(a,b)    (((a) < (b)) ? (a) : (b))
+#define max3(a,b,c) (((a) > (b) ? (a) : (b)) > (c) ? ((a) > (b) ? (a) : (b)) : (c))
+#define min3(a,b,c) (((a) < (b) ? (a) : (b)) < (c) ? ((a) < (b) ? (a) : (b)) : (c))
 
 PJD_INLINE void SinCos(float value, float* s, float* c)
 {

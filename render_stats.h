@@ -13,12 +13,15 @@ typedef struct RenderStats
     AtomicInt    TrianglesCulled;
     AtomicInt    ZeroAreaTris;
     AtomicInt    TrianglesRendered;
+    AtomicInt    TilesCulled;
+    AtomicInt    TilesFull;
+    AtomicInt    TilesPartial;
 } RenderStats;
 
 extern RenderStats Stats;
 
 #if PJD_USE_RENDER_STATS
-#   define RENDER_STATS_ADD(name, value) std::atomic_fetch_add_explicit(&Stats.name, (value), std::memory_order_relaxed);
+#   define RENDER_STATS_ADD(name, value) do { std::atomic_fetch_add_explicit(&Stats.name, (value), std::memory_order_relaxed); } while(0)
 #else
 #   define RENDER_STATS_ADD(name, value)
 #endif

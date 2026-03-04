@@ -10,7 +10,8 @@
 
 RasterContext       Ctx;
 ThreadPoolHandle    ThreadPool;
-vec2i               TileIndices[TILE_WIDTH * TILE_HEIGHT];
+vec2i               TileIndexToCoord[TILE_WIDTH * TILE_HEIGHT];
+int                 CoordToTileIndex[TILE_WIDTH][TILE_HEIGHT];
 
 static uint32_t*    ColorBuffer[2];
 static int          Frame;
@@ -45,7 +46,13 @@ void RasterizerInitialize(const RasterizerDesc& init)
     }
 
     for (int i = 0; i < TILE_WIDTH * TILE_HEIGHT; ++i) {
-        Decode6BitMorton(i, &TileIndices[i][0], &TileIndices[i][1]);
+        Decode6BitMorton(i, &TileIndexToCoord[i][0], &TileIndexToCoord[i][1]);
+    }
+    for (int y = 0; y < TILE_HEIGHT; ++y)
+    {
+        for (int x = 0; x < TILE_WIDTH; ++x) {
+            CoordToTileIndex[y][x] = Encode6BitMorton(x, y);
+        }
     }
 }
 
@@ -99,7 +106,7 @@ void DrawPixel(int x, int y, Color color)
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT
     int tx = x / TILE_WIDTH;
     int ty = y / TILE_HEIGHT;
-    int offset = ((ty * TILE_COUNT_X + tx) * (TILE_WIDTH * TILE_HEIGHT)) + Encode6BitMorton(x, y);
+    int offset = ((ty * TILE_COUNT_X + tx) * (TILE_WIDTH * TILE_HEIGHT)) + CoordToTileIndex[y-ty*TILE_WIDTH][x-tx*TILE_HEIGHT];
 #else
     int offset = y * FB_WIDTH + x;
 #endif
@@ -203,8 +210,8 @@ static void ResolveTiledFrameBuffer(int startTile, int endTile, void* context)
 
         for (int pos = 0; pos < PixelsPerTile; ++pos)
         {
-            int px = tileOriginX + TileIndices[pos][0];
-            int py = tileOriginY + TileIndices[pos][1];
+            int px = tileOriginX + TileIndexToCoord[pos][0];
+            int py = tileOriginY + TileIndexToCoord[pos][1];
             outCB[py * FB_WIDTH + px] = TileBuffer[pos];
         }
 
@@ -215,6 +222,10 @@ static void ResolveTiledFrameBuffer(int startTile, int endTile, void* context)
 void ResolveFrameBuffer()
 {
     PROFILE_AUTO("Resolve");
+
+#if DEBUG_TILE_CLASSIFICATION
+    DebugViewTileCoverage();
+#endif 
 
     Color* outCB = (Color*)Ctx.Out.CB;
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT

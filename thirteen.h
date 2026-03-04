@@ -2131,7 +2131,7 @@ namespace Thirteen
         using namespace Internal;
         Internal::width = width;
         Internal::height = height;
-        Internal::Pixels = (uint8*)malloc(width * height * 4);
+        Internal::Pixels = (uint8*)_aligned_malloc(width * height * 4, 64);
         if (!Internal::Pixels)
             return nullptr;
 
@@ -2140,7 +2140,7 @@ namespace Thirteen
         {
             delete platform;
             platform = nullptr;
-            free(Internal::Pixels);
+            _aligned_free(Internal::Pixels);
             Internal::Pixels = nullptr;
             return nullptr;
         }
@@ -2154,7 +2154,7 @@ namespace Thirteen
             platform->ShutdownWindow();
             delete platform;
             platform = nullptr;
-            free(Internal::Pixels);
+            _aligned_free(Internal::Pixels);
             Internal::Pixels = nullptr;
             return nullptr;
         }
@@ -2357,7 +2357,7 @@ namespace Thirteen
             platform = nullptr;
         }
 
-        free(Internal::Pixels);
+        _aligned_free(Internal::Pixels);
         Internal::Pixels = nullptr;
     }
 }

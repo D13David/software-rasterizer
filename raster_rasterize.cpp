@@ -7,6 +7,79 @@
 #include "render_stats.h"
 #include "math.h"
 
+typedef enum TileCoverage : uint8_t
+{
+    TilePartialCoverage = 0,
+    TileFullCoverage    = 1,
+    TileNoCoverage      = 2,
+} TileCoverage;
+
+#if DEBUG_TILE_CLASSIFICATION
+uint8_t* Coverage;
+static void ResetCoverageBuffer()
+{
+    int numElements = TILE_COUNT_X * TILE_COUNT_Y;
+    if (!Coverage) {
+        Coverage = (uint8_t*)malloc(numElements * sizeof(uint8_t));
+        assert(Coverage != NULL);
+    }
+    for (int i = 0; i < numElements; ++i) {
+        Coverage[i] = 3;
+    }
+}
+static void TouchTile(int tileIndex, TileCoverage coverage)
+{
+    if (!Coverage) {
+        return;
+    }
+
+    if (coverage < Coverage[tileIndex]) {
+        Coverage[tileIndex] = coverage;
+    }
+}
+static void FillTileWithColor(int tileMinX, int tileMinY, int tileMaxX, int tileMaxY, Color color)
+{
+    for (int y = tileMinY; y <= tileMaxY; ++y)
+    {
+        for (int x = tileMinX; x <= tileMaxX; ++x)
+        {
+            DrawPixel(x, y, color);
+        }
+    }
+}
+void DebugViewTileCoverage()
+{
+    if (!Coverage) 
+    {
+        ResetCoverageBuffer();
+        return;
+    }
+
+    for (int tileIndex = 0; tileIndex < TILE_COUNT_X*TILE_COUNT_Y; ++tileIndex)
+    {
+        int tileOffset = tileIndex * (TILE_WIDTH * TILE_HEIGHT);
+        int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
+        int tileMinY = (tileIndex / TILE_COUNT_X) * TILE_HEIGHT;
+        int tileMaxX = min(tileMinX + TILE_WIDTH - 1, FB_WIDTH - 1);
+        int tileMaxY = min(tileMinY + TILE_HEIGHT - 1, FB_HEIGHT - 1);
+
+        if (Coverage[tileIndex] == 3) {
+            continue;
+        }
+
+        Color color = COLOR(1, 0, 0);
+        switch (Coverage[tileIndex])
+        {
+        case TilePartialCoverage: color = COLOR(0, 1, 0); break;
+        case TileFullCoverage: color = COLOR(0, 0, 1); break;
+        }
+        FillTileWithColor(tileMinX, tileMinY, tileMaxX, tileMaxY, color);
+    }
+
+    ResetCoverageBuffer();
+}
+#endif
+
 #if DEBUG_SCREENSPACE_DERIVATIVES
 static Color DebugViewScreenSpaceDerivatives(float dudx, float dudy, float dvdx, float dvdy)
 {
@@ -48,44 +121,60 @@ static Color DebugViewMipLevel(float mipLevel)
 }
 #endif
 
-static PJD_INLINE void RasterizeQuad(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2, int x, int y, int cx0[4], int cx1[4], int cx2[4], float invArea, int bufferOffset = 0)
+static TileCoverage ClassifyTile(int tileMinX, int tileMinY, int tileMaxX, int tileMaxY, int edges[3][3])
 {
-    float w0[4], w1[4], w2[4];
-    float zndc[4], u[4], v[4];
-    int   px[4], py[4];
+    int allInside = 1;
+    int allOutside = 0;
 
+#define TEST_EDGE(index) do {                           \
+        int A = edges[index][0];                        \
+        int B = edges[index][1];                        \
+        int C = edges[index][2];                        \
+                                                        \
+        int e0 = A * tileMinX + B * tileMinY + C;       \
+        int e1 = A * tileMaxX + B * tileMinY + C;       \
+        int e2 = A * tileMinX + B * tileMaxY + C;       \
+        int e3 = A * tileMaxX + B * tileMaxY + C;       \
+                                                        \
+        allInside &= min(e0, min3(e1, e2, e3)) >= 0;    \
+        allOutside |= max(e0, max3(e1, e2, e3)) < 0;    \
+    } while(0)
+
+    TEST_EDGE(0);
+    TEST_EDGE(1);
+    TEST_EDGE(2);
+
+    assert(!(allOutside && allInside));
+
+    return (TileCoverage)((allOutside << 1) | allInside);
+}
+
+typedef struct Interpolants
+{
+    int     cx0, cx1, cx2;
+    float   z, u, v;
+    int     px, py;
+} Interpolants;
+
+#define I(idx, attr) interpolants[idx].##attr
+
+static PJD_INLINE Color ShadePixel(float mipLevel, const Interpolants* interp)
+{
+#if DEBUG_SCREENSPACE_DERIVATIVES
+    Color color = DebugViewScreenSpaceDerivatives(dudx, dudy, dvdx, dvdy);
+#elif DEBUG_MIP_LEVELS
+    Color color = DebugViewMipLevel(mipLevel);
+#else
+    Color color = SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
+#endif
+
+    return color;
+}
+
+template<bool EdgeTest>
+static PJD_INLINE void RasterizeQuad(int x, int y, float mipLevel, const Interpolants interpolants[4], int bufferOffset = 0)
+{
     float* depthBuffer = (float*)Ctx.Out.DB;
-
-    // precompute interpolants for quad
-    for (int i = 0; i < 4; ++i)
-    {
-        px[i] = x + (i & 1);
-        py[i] = y + (i >> 1);
-
-        w0[i] = cx0[i] * invArea;
-        w1[i] = cx1[i] * invArea;
-        w2[i] = cx2[i] * invArea;
-
-        float depth = 1.0f / (w0[i] * v0->InvW + w1[i] * v1->InvW + w2[i] * v2->InvW);
-        zndc[i] = (w0[i] * v0->ZOverW + w1[i] * v1->ZOverW + w2[i] * v2->ZOverW) * depth;
-        u[i]    = (w0[i] * v0->UOverW + w1[i] * v1->UOverW + w2[i] * v2->UOverW) * depth;
-        v[i]    = (w0[i] * v0->VOverW + w1[i] * v1->VOverW + w2[i] * v2->VOverW) * depth;
-    }
-
-    // calculate u/v derivatives and mip-level
-    float dudx = ((u[1] + u[3]) - (u[0] + u[2])) * 0.5f;
-    float dudy = ((u[2] + u[3]) - (u[0] + u[1])) * 0.5f;
-    float dvdx = ((v[1] + v[3]) - (v[0] + v[2])) * 0.5f;
-    float dvdy = ((v[2] + v[3]) - (v[0] + v[1])) * 0.5f;
-
-    float dudx2 = dudx * dudx;
-    float dudy2 = dudy * dudy;
-    float dvdx2 = dvdx * dvdx;
-    float dvdy2 = dvdy * dvdy;
-
-    float rho2 = fmaxf(dudx2 + dvdx2, dudy2 + dvdy2);
-    float mipLevel = 0.5f * Log2Fast(rho2 * Ctx.Texture.Width * Ctx.Texture.Width);
-    mipLevel = Clamp(mipLevel, 0.0f, (float)Ctx.Texture.MipLevels - 1);
 
 #if ENABLE_CHECKERBOARD_RENDERING
     for (int hi = 0; hi < 2; ++hi)
@@ -96,30 +185,27 @@ static PJD_INLINE void RasterizeQuad(const ExportVertex* v0, const ExportVertex*
 #if ENABLE_CHECKERBOARD_RENDERING
         int i = (hi << 1) | (hi ^ Frame);
 #endif
-        if (cx0[i] >= 0 && cx1[i] >= 0 && cx2[i] >= 0)
+        if constexpr (EdgeTest)
         {
+            if ((I(i, cx0) | I(i, cx1) | I(i, cx2)) < 0)
+                continue;
+        }
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT
-            int index = bufferOffset + i;
+        int index = bufferOffset + CoordToTileIndex[y][x] + i;
 #else
-            int index = py[i] * FB_WIDTH + px[i];
+        int index = I(i,py) * FB_WIDTH + I(i,px);
 #endif
-            if (zndc[i] < depthBuffer[index])
-            {
-                depthBuffer[index] = zndc[i];
-#if DEBUG_SCREENSPACE_DERIVATIVES
-                Color color = DebugViewScreenSpaceDerivatives(dudx, dudy, dvdx, dvdy);
-#elif DEBUG_MIP_LEVELS
-                Color color = DebugViewMipLevel(mipLevel);
-#else
-                Color color = SampleTextureLod(px[i], py[i], u[i], v[i], mipLevel);
-#endif
-                WriteFramebufferDirect(index, color);
-            }
+        if (I(i,z) < depthBuffer[index])
+        {
+            depthBuffer[index] = I(i,z);
+
+            WriteFramebufferDirect(index, ShadePixel(mipLevel, &interpolants[i]));
         }
     }
 }
 
-static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2, vec4i bounds, float invArea)
+template<bool fullyCovered>
+static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2, vec4i bounds, float invArea, int tileIndex)
 {
     int x0 = v0->ScreenX, y0 = v0->ScreenY;
     int x1 = v1->ScreenX, y1 = v1->ScreenY;
@@ -133,6 +219,10 @@ static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const Expor
     int cy1 = Edge(x2, y2, x0, y0, bounds[0], bounds[1]);
     int cy2 = Edge(x0, y0, x1, y1, bounds[0], bounds[1]);
 
+    int tileOffset = tileIndex * (TILE_WIDTH * TILE_HEIGHT);
+    int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
+    int tileMinY = (tileIndex / TILE_COUNT_X) * TILE_HEIGHT;
+
     for (int y = bounds[1]; y <= bounds[3]; y += 2)
     {
         int cx0Row = cy0;
@@ -141,11 +231,51 @@ static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const Expor
 
         for (int x = bounds[0]; x <= bounds[2]; x += 2)
         {
-            int cx0[4] = { cx0Row, cx0Row + A12, cx0Row + B12, cx0Row + A12 + B12 };
-            int cx1[4] = { cx1Row, cx1Row + A20, cx1Row + B20, cx1Row + A20 + B20 };
-            int cx2[4] = { cx2Row, cx2Row + A01, cx2Row + B01, cx2Row + A01 + B01 };
+            Interpolants interpolants[4];
 
-            RasterizeQuad(v0, v1, v2, x, y, cx0, cx1, cx2, invArea);
+            I(0, cx0) = cx0Row; I(1, cx0) = cx0Row + A12; I(2, cx0) = cx0Row + B12; I(3, cx0) = cx0Row + A12 + B12;
+            I(0, cx1) = cx1Row; I(1, cx1) = cx1Row + A20; I(2, cx1) = cx1Row + B20; I(3, cx1) = cx1Row + A20 + B20;
+            I(0, cx2) = cx2Row; I(1, cx2) = cx2Row + A01; I(2, cx2) = cx2Row + B01; I(3, cx2) = cx2Row + A01 + B01;
+
+            // precompute interpolants for quad
+            for (int i = 0; i < 4; ++i)
+            {
+                float w0 = I(i,cx0) * invArea;
+                float w1 = I(i,cx1) * invArea;
+                float w2 = I(i,cx2) * invArea;
+
+                I(i,px) = x + (i & 1);
+                I(i,py) = y + (i >> 1);
+
+                float depth = 1.0f /   (w0 * v0->InvW   + w1 * v1->InvW   + w2 * v2->InvW);
+                I(i,z)      = (w0 * v0->ZOverW + w1 * v1->ZOverW + w2 * v2->ZOverW) * depth;
+                I(i,u)      = (w0 * v0->UOverW + w1 * v1->UOverW + w2 * v2->UOverW) * depth;
+                I(i,v)      = (w0 * v0->VOverW + w1 * v1->VOverW + w2 * v2->VOverW) * depth;
+            }
+
+            // calculate u/v derivatives and mip-level
+            float dudx = ((I(1,u) + I(3,u)) - (I(0,u) + I(2,u))) * 0.5f;
+            float dudy = ((I(2,u) + I(3,u)) - (I(0,u) + I(1,u))) * 0.5f;
+            float dvdx = ((I(1,v) + I(3,v)) - (I(0,v) + I(2,v))) * 0.5f;
+            float dvdy = ((I(2,v) + I(3,v)) - (I(0,v) + I(1,v))) * 0.5f;
+
+            float dudx2 = dudx * dudx;
+            float dudy2 = dudy * dudy;
+            float dvdx2 = dvdx * dvdx;
+            float dvdy2 = dvdy * dvdy;
+
+            float rho2 = fmaxf(dudx2 + dvdx2, dudy2 + dvdy2);
+            float mipLevel = 0.5f * Log2Fast(rho2 * Ctx.Texture.Width * Ctx.Texture.Width);
+            mipLevel = Clamp(mipLevel, 0.0f, (float)Ctx.Texture.MipLevels - 1);
+
+#if ENABLE_TILED_FRAMEBUFFER_LAYOUT
+            int posX = x - tileMinX;
+            int posY = y - tileMinY;
+#else
+            int posX = x;
+            int posY = y;
+#endif
+            RasterizeQuad<!fullyCovered>(posX, posY, mipLevel, interpolants, tileOffset);
 
             cx0Row += 2 * A12;
             cx1Row += 2 * A20;
@@ -158,42 +288,6 @@ static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const Expor
     }
 }
 
-static void RasterizeQuadSwizzled(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2, vec4i bounds, float invArea, int tileIndex)
-{
-    int x0 = v0->ScreenX, y0 = v0->ScreenY;
-    int x1 = v1->ScreenX, y1 = v1->ScreenY;
-    int x2 = v2->ScreenX, y2 = v2->ScreenY;
-
-    int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
-    int tileMinY = (tileIndex / TILE_COUNT_X) * TILE_HEIGHT;
-
-    for (int pos = 0; pos < TILE_WIDTH * TILE_HEIGHT; pos += 4)
-    {
-        int quadX = tileMinX + TileIndices[pos][0];
-        int quadY = tileMinY + TileIndices[pos][1];
-
-        if (quadX < bounds[0] || quadX > bounds[2] ||
-            quadY < bounds[1] || quadY > bounds[3]) {
-            continue;
-        }
-
-        int cx0[4], cx1[4], cx2[4];
-        for (int i = 0; i < 4; ++i) 
-        {
-            int px = quadX + (i & 1);
-            int py = quadY + (i >> 1);
-
-            cx0[i] = Edge(x1, y1, x2, y2, px, py);
-            cx1[i] = Edge(x2, y2, x0, y0, px, py);
-            cx2[i] = Edge(x0, y0, x1, y1, px, py);
-        }
-
-        int tileOffset = tileIndex * (TILE_WIDTH * TILE_HEIGHT) + pos;
-
-        RasterizeQuad(v0, v1, v2, quadX, quadY, cx0, cx1, cx2, invArea, tileOffset);
-    }
-}
-
 static void DrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2, int tileIndex)
 {
     int x0 = v0->ScreenX, y0 = v0->ScreenY;
@@ -203,13 +297,11 @@ static void DrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const E
     int area = Edge(x0, y0, x1, y1, x2, y2);
 
     // reject zero area triangles. vertex transform exports zero area triangles for fully discarted triangles
-    if (area == 0) {
+    if (area == 0) 
+    {
         RENDER_STATS_ADD(ZeroAreaTris, 1);
         return;
     }
-
-    vec4i bounds;
-    ComputeAABB(x0, y0, x1, y1, x2, y2, bounds);
 
     // clamp bounds to screen tile
     int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
@@ -217,16 +309,42 @@ static void DrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const E
     int tileMaxX = min(tileMinX + TILE_WIDTH - 1, FB_WIDTH - 1);
     int tileMaxY = min(tileMinY + TILE_HEIGHT - 1, FB_HEIGHT - 1);
 
+    int edges[3][3] = {
+        {y1 - y2, x2 - x1, x1 * y2 - y1 * x2},
+        {y2 - y0, x0 - x2, x2 * y0 - y2 * x0},
+        {y0 - y1, x1 - x0, x0 * y1 - y0 * x1}
+    };
+
+    TileCoverage coverage = ClassifyTile(tileMinX, tileMinY, tileMaxX, tileMaxY, edges);
+
+#if DEBUG_TILE_CLASSIFICATION
+    TouchTile(tileIndex, coverage);
+#endif
+
+    if (coverage == TileNoCoverage)
+    {
+        RENDER_STATS_ADD(TilesCulled, 1);
+        return;
+    }
+
+    vec4i bounds;
+    ComputeAABB(x0, y0, x1, y1, x2, y2, bounds);
+
     bounds[0] = max(bounds[0], tileMinX);
     bounds[1] = max(bounds[1], tileMinY);
     bounds[2] = min(bounds[2], tileMaxX);
     bounds[3] = min(bounds[3], tileMaxY);
 
-#if ENABLE_TILED_FRAMEBUFFER_LAYOUT
-    RasterizeQuadSwizzled(v0, v1, v2, bounds, 1.0f / area, tileIndex);
-#else
-    RasterizeQuadLinearEdgeIncrement(v0, v1, v2, bounds, 1.0f / area);
-#endif
+    if (coverage == TileFullCoverage)
+    {
+        RENDER_STATS_ADD(TilesFull, 1);
+        RasterizeQuadLinearEdgeIncrement<true>(v0, v1, v2, bounds, 1.0f / area, tileIndex);
+    }
+    else
+    {
+        RENDER_STATS_ADD(TilesPartial, 1);
+        RasterizeQuadLinearEdgeIncrement<false>(v0, v1, v2, bounds, 1.0f / area, tileIndex);
+    }
 }
 
 static void RunRasterizeTriangles_(int tileIndexStart, int tileIndexEnd, void* context)
@@ -246,6 +364,6 @@ static void RunRasterizeTriangles_(int tileIndexStart, int tileIndexEnd, void* c
 void RunRasterizeTriangles(bool parallelize)
 {
     PROFILE_AUTO("Rasterize");
-    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, 1, &RunRasterizeTriangles_, NULL);
+    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, 64, &RunRasterizeTriangles_, NULL);
     else RunRasterizeTriangles_(0, MAX_TILES, NULL);
 }

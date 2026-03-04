@@ -17,6 +17,9 @@ using AtomicInt = std::atomic<int>;
 // enable for rendering screenspace derivatives accross polygons
 #define DEBUG_SCREENSPACE_DERIVATIVES 0
 
+// enable tile classification drawing
+#define DEBUG_TILE_CLASSIFICATION 0
+
 #if DEBUG_MIP_LEVELS || DEBUG_SCREENSPACE_DERIVATIVES
 #   define DEBUG_VIEW 1
 #endif
@@ -28,10 +31,11 @@ using AtomicInt = std::atomic<int>;
 #define FB_WIDTH    Ctx.Out.Width
 #define FB_HEIGHT   Ctx.Out.Height
 
-#define TILE_WIDTH          64
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT
-#define TILE_HEIGHT         64
+#define TILE_WIDTH          16
+#define TILE_HEIGHT         16
 #else
+#define TILE_WIDTH          64
 #define TILE_HEIGHT         16
 #endif // ENABLE_TILED_FRAMEBUFFER_LAYOUT
 #define TILE_COUNT_X        (FB_WIDTH / TILE_WIDTH)
@@ -83,7 +87,8 @@ extern struct ThreadPool*   ThreadPool;
 extern RasterContext        Ctx;
 extern struct ExportBuffer* ExportBuffer;
 extern ScreenTile           Tiles[MAX_TILES];
-extern vec2i                TileIndices[TILE_WIDTH * TILE_HEIGHT];
+extern vec2i                TileIndexToCoord[TILE_WIDTH * TILE_HEIGHT];
+extern int                  CoordToTileIndex[TILE_WIDTH][TILE_HEIGHT];
 
 static PJD_INLINE int Edge(int x0, int y0, int x1, int y1, int x2, int y2)
 {
@@ -119,5 +124,9 @@ Color SampleTextureLod(int sx, int sy, float u, float v, float mipLevel);
 void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransformCommand* command);
 void RunTriangleBinning(bool parallelize);
 void RunRasterizeTriangles(bool parallelize);
+
+#if DEBUG_TILE_CLASSIFICATION
+void DebugViewTileCoverage();
+#endif // DEBUG_TILE_CLASSIFICATION
 
 #endif // PJD_RASTER_INTERNAL_H
