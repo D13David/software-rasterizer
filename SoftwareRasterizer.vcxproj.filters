@@ -20,6 +20,9 @@
     <Filter Include="io">
       <UniqueIdentifier>{7042fb50-b5bb-414d-a321-0c25456d7761}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\test_scenes">
+      <UniqueIdentifier>{f7a503b5-540e-4303-b399-0064cf98c0ac}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="tinyobj_loader.h">
@@ -75,6 +78,15 @@
     </ClCompile>
     <ClCompile Include="raster_rasterize.cpp">
       <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="test_scene_2d.cpp">
+      <Filter>Source Files\test_scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="test_scene_empty.cpp">
+      <Filter>Source Files\test_scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="test_scene_unreal.cpp">
+      <Filter>Source Files\test_scenes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -143,6 +155,9 @@
     </ClInclude>
     <ClInclude Include="raster_internal.h">
       <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="shared.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -15,4 +15,20 @@
           (uint8_t)((b) * 255.0f), \
           255 )
 
+typedef enum FillStyle
+{
+    EMPTY_FILL,
+    SOLID_FILL,
+    LINE_FILL,
+    LTSLASH_FILL,
+    SLASH_FILL,
+    BKSLASH_FILL,
+    LTBKSLASH_FILL,
+    HATCH_FILL,
+    XHATCH_FILL,
+    INTERLEAVE_FILL,
+    WIDE_DOT_FILL,
+    CLOSE_DOT_FILL
+} FillStyle;
+
 #endif // PJD_RASTER_COMMON_H
