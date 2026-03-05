@@ -31,4 +31,12 @@ typedef enum FillStyle
     CLOSE_DOT_FILL
 } FillStyle;
 
+typedef enum LineStyle
+{
+    SOLID_LINE,
+    DOTTED_LINE,
+    CENTER_LINE,
+    DASHED_LINE
+};
+
 #endif // PJD_RASTER_COMMON_H

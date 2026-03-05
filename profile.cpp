@@ -3,7 +3,6 @@
 #include "profile.h"
 #include "common.h"
 #include "raster.h"
-#include "font_render.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -144,16 +143,16 @@ void DrawProfilerStats(int posX, int posY, int width)
 
         offsetY += 16;
 
-        FntWriteString(node->Name, posX, offsetY - 6);
+        WriteString(node->Name, posX, offsetY - 6);
 
         offsetY += 8;
 
-        DrawRectangle(posX, offsetY - 4, totalX - posX, 8, COLOR(0.75f, 0.75f, 0.75f));
+        DrawRectangle(posX, offsetY - 4, totalX - posX, 8, COLOR(0.75f, 0.75f, 0.75f), FillStyle::SLASH_FILL);
         DrawLine(minX, offsetY - 4, minX, offsetY + 4, COLOR(0, 1, 0));
         DrawLine(maxX, offsetY - 4, maxX, offsetY + 4, COLOR(1, 0, 0));
         DrawLine(avgX, offsetY - 4, avgX, offsetY + 4, COLOR(0, 0, 1));
 
-        FntWriteString(Format("%.03fms (%.03fms)", total, avg), posX + width, offsetY - 4);
+        WriteString(Format("%.03fms (%.03fms)", total, avg), posX + width, offsetY - 4);
     }
 }
 #endif // #if PJD_PROFILING_ENABLED

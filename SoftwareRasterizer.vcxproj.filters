@@ -144,9 +144,6 @@
     <ClInclude Include="uarch_loader.h">
       <Filter>io</Filter>
     </ClInclude>
-    <ClInclude Include="font_render.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
     <ClInclude Include="profile.h">
       <Filter>common</Filter>
     </ClInclude>

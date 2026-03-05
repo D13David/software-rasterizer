@@ -5,7 +5,7 @@
 #define TEST_SCENE_2D       2
 
 // change this to change scene
-#define PJD_ACTIVE_SCENE TEST_SCENE_2D
+#define PJD_ACTIVE_SCENE TEST_SCENE_UNREAL
 
 #if __cplusplus
 extern "C" {

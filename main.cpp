@@ -5,13 +5,14 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#define THIRTEEN_IMPLEMENTATION
 #include "thirteen.h"
 
 #include "fps_meter.h"
 #include "profile.h"
 #include "render_stats.h"
-#include "font_render.h"
 #include "shared.h"
+#include "raster.h"
 
 #define FPS_METER_WIDTH 200
 #define FPS_METER_HEIGHT 70
@@ -99,16 +100,22 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         ProfilerReset();
         ResetRenderStats();
 
-        SceneRenderFrame();
+        {
+            PROFILE_AUTO("Scene Frame Render");
+            SceneRenderFrame();
+        }
         
         ResolveFrameBuffer();
 
-        SceneRenderOverlay2D();
+        {
+            PROFILE_AUTO("Scene Overlay 2D");
+            SceneRenderOverlay2D();
+        }
 
         if (ShowPerformanceMetrics)
         {
             FPSMeterUpdate();
-            FPSMeterDraw(0, FB_HEIGHT - 1 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
+            FPSMeterDraw(0, FB_HEIGHT - 100 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
             DrawRenderStats(FB_WIDTH - 170, 10);
         }
 
@@ -118,7 +125,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
             const int height = 200;
             int top = (FB_HEIGHT - height) / 2;
             int left = (FB_WIDTH - width) / 2;
-            DrawRectangle(left, top, width, height, COLOR(0.4, 0.4, 0.4));
+            DrawRectangle(left, top, width, height, COLOR(0.4, 0.4, 0.4), CLOSE_DOT_FILL);
 
             int offset = top + 5;
             for (int i = 0; Commands[i].Help; ++i)
@@ -126,7 +133,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
                 char keyCodeName[128];
                 UINT scanCode = MapVirtualKey(Commands[i].KeyCode, MAPVK_VK_TO_VSC);
                 LONG result = GetKeyNameTextA(scanCode << 16, keyCodeName, sizeof(keyCodeName));
-                FntWriteString(Format("%-5s - %s", keyCodeName, Commands[i].Help), left + 5, offset), offset += 10;
+                WriteString(Format("%-5s - %s", keyCodeName, Commands[i].Help), left + 5, offset), offset += 10;
             }
         }
 

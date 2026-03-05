@@ -56,7 +56,7 @@ void FPSMeterDraw(int x, int y, int width, int height)
     for (int i = 0; i < 4; ++i)
     {
         int posY = markers[i] * height / FPS_MAX;
-        DrawLine(x, offsetY - posY, width, offsetY - posY, COLOR(1, 1, 1));
+        DrawLine(x, offsetY - posY, width, offsetY - posY, COLOR(1, 1, 1), 1, LineStyle::DOTTED_LINE);
     }
 
     if (context.size < 2) {
@@ -87,8 +87,8 @@ void FPSMeterDraw(int x, int y, int width, int height)
         DrawLine(
                     currentX, offsetY - (value0 * height) / FPS_MAX,
                     nextX,    offsetY - (value1 * height) / FPS_MAX,
-                    value1 < 60 ? COLOR(1, 0, 0) : COLOR(0, 1, 0)
-                  );
+                    value1 < 60 ? COLOR(1, 0, 0) : COLOR(0, 1, 0), 3
+                );
 
         currentX = nextX;
     }
