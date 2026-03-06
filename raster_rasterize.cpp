@@ -373,7 +373,7 @@ static void DrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const E
     }
 }
 
-static void RunRasterizeTriangles_(int tileIndexStart, int tileIndexEnd, void* context)
+static void RunRasterizeTriangles_(size_t id, int tileIndexStart, int tileIndexEnd, void* context)
 {
     for (int i = tileIndexStart; i < tileIndexEnd; ++i)
     {
@@ -391,5 +391,5 @@ void RunRasterizeTriangles(bool parallelize)
 {
     PROFILE_AUTO("Rasterize");
     if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, 64, &RunRasterizeTriangles_, NULL);
-    else RunRasterizeTriangles_(0, MAX_TILES, NULL);
+    else RunRasterizeTriangles_(0, 0, MAX_TILES, NULL);
 }

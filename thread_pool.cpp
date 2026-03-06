@@ -7,13 +7,20 @@
 
 typedef struct Job
 {
-    void (*Proc)(void*);
+    void (*Proc)(size_t id, void*);
     void* Arg;
 } Job;
 
+typedef struct Worker
+{
+    size_t      Id;
+    HANDLE      Handle;
+    struct ThreadPool* Pool;
+} Worker;
+
 typedef struct ThreadPool
 {
-    HANDLE*     Workers;
+    Worker*     Workers;
     int         NumWorkers;
     bool        StopRequested;
     bool        FinishRemainingJobs;
@@ -52,7 +59,7 @@ ThreadPoolHandle ThreadPoolInit(int numWorkers, int maxJobs)
     pool->WorkersActive = 0;
 
     // initialize worker threads
-    pool->Workers = (HANDLE*)calloc(numWorkers, sizeof(HANDLE));
+    pool->Workers = (Worker*)calloc(numWorkers, sizeof(Worker));
     if (pool->Workers == NULL) {
         goto failed;
     }
@@ -74,14 +81,16 @@ ThreadPoolHandle ThreadPoolInit(int numWorkers, int maxJobs)
 
     for (int i = 0; i < numWorkers; ++i) 
     {
-        pool->Workers[i] = CreateThread(NULL, 0, &ThreadProc, pool, CREATE_SUSPENDED, NULL);
-        if (!pool->Workers[i]) {
+        pool->Workers[i].Id = i;
+        pool->Workers[i].Pool = pool;
+        pool->Workers[i].Handle = CreateThread(NULL, 0, &ThreadProc, &pool->Workers[i], CREATE_SUSPENDED, NULL);
+        if (!pool->Workers[i].Handle) {
             break;
         }
 #if _DEBUG
         WCHAR threadName[16];
         swprintf_s(threadName, L"worker-%d", i);
-        SetThreadDescription(pool->Workers[i], threadName);
+        SetThreadDescription(pool->Workers[i].Handle, threadName);
 #endif // _DEBUG
 
         ++threadsCreated;
@@ -90,14 +99,14 @@ ThreadPoolHandle ThreadPoolInit(int numWorkers, int maxJobs)
     if (threadsCreated != numWorkers)
     {
         for (int i = 0; i < threadsCreated; ++i) {
-            CloseHandle(pool->Workers[i]);
+            CloseHandle(pool->Workers[i].Handle);
         }
 
         goto failed;
     }
 
     for (int i = 0; i < numWorkers; ++i) {
-        ResumeThread(pool->Workers[i]);
+        ResumeThread(pool->Workers[i].Handle);
     }
 
     return pool;
@@ -129,8 +138,8 @@ void ThreadPoolDestroy(ThreadPoolHandle pool, ShutdownMode mode)
     // sync with all workers
     for (int i = 0; i < pool->NumWorkers; ++i)
     {
-        WaitForSingleObject(pool->Workers[i], INFINITE);
-        CloseHandle(pool->Workers[i]);
+        WaitForSingleObject(pool->Workers[i].Handle, INFINITE);
+        CloseHandle(pool->Workers[i].Handle);
     }
 
     DeleteCriticalSection(&pool->QueueLock);
@@ -155,7 +164,7 @@ void ThreadPoolWaitForJobs(ThreadPoolHandle pool)
     LeaveCriticalSection(&pool->QueueLock);
 }
 
-int ThreadPoolAddJob(ThreadPoolHandle pool, void (*proc)(void*), void* arg)
+int ThreadPoolAddJob(ThreadPoolHandle pool, void (*proc)(size_t, void*), void* arg)
 {
     if (pool == NULL || proc == NULL) {
         return 0;
@@ -187,7 +196,8 @@ int ThreadPoolGetNumWorkers(ThreadPoolHandle pool)
 
 static DWORD WINAPI ThreadProc(LPVOID arg)
 {
-    ThreadPoolHandle pool = (ThreadPoolHandle)arg;
+    Worker* worker = (Worker*)arg;
+    ThreadPool* pool = worker->Pool;
 
     while (true)
     {
@@ -214,7 +224,7 @@ static DWORD WINAPI ThreadProc(LPVOID arg)
 
         LeaveCriticalSection(&pool->QueueLock);
 
-        job.Proc(job.Arg);
+        job.Proc(worker->Id, job.Arg);
 
         EnterCriticalSection(&pool->QueueLock);
 

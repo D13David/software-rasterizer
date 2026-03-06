@@ -1,7 +1,7 @@
-#if PJD_USE_RENDER_STATS
-
 #include "render_stats.h"
 #include "raster.h"
+
+#if PJD_USE_RENDER_STATS
 
 RenderStats Stats;
 

@@ -16,7 +16,7 @@ enum ShutdownMode
 ThreadPoolHandle ThreadPoolInit(int numWorkers, int maxJobs);
 void ThreadPoolDestroy(ThreadPoolHandle pool, ShutdownMode mode);
 void ThreadPoolWaitForJobs(ThreadPoolHandle pool);
-int ThreadPoolAddJob(ThreadPoolHandle pool, void (*proc)(void*), void* arg);
+int ThreadPoolAddJob(ThreadPoolHandle pool, void (*proc)(size_t, void*), void* arg);
 int ThreadPoolGetNumWorkers(ThreadPoolHandle pool);
 
 #ifdef __cplusplus

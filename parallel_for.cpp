@@ -14,7 +14,7 @@ typedef struct ParallelForContext
     void*           UserContext;
 } ParallelForContext;
 
-static void ParallelForWorker(void* arg)
+static void ParallelForWorker(size_t id, void* arg)
 {
     ParallelForContext* context = (ParallelForContext*)arg;
 
@@ -31,7 +31,7 @@ static void ParallelForWorker(void* arg)
             end = context->End;
         }
 
-        context->Func(start, end, context->UserContext);
+        context->Func(id, start, end, context->UserContext);
     }
 }
 

@@ -60,11 +60,9 @@ void RasterizerInitialize(const RasterizerDesc& init)
     }
 
     int* tileBinningBuffer = (int*)malloc(MAX_TILES * MAX_TRIS_PER_TILE * sizeof(int));
-
-    for (int i = 0; i < MAX_TILES; ++i)
-    {
+    for (int i = 0; i < MAX_TILES; ++i) {
         Tiles[i].BinnedTriangles = &tileBinningBuffer[i * MAX_TRIS_PER_TILE];
-    }
+    }   
 }
 
 void RasterizerDestroy()
@@ -215,7 +213,7 @@ void DrawTriangleList(const void* data, const uint32_t* indices, const InputElem
     ExportBufferReset(ExportBuffer);
 }
 
-static void ResolveTiledFrameBuffer(int startTile, int endTile, void* context)
+static void ResolveTiledFrameBuffer(size_t id, int startTile, int endTile, void* context)
 {
     const int PixelsPerTile = TILE_WIDTH * TILE_HEIGHT;
 

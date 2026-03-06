@@ -113,7 +113,7 @@ static int ClipTriangleAgainstFrustum(ClipVertex verts[3], uint8_t m0, uint8_t m
     return count;
 }
 
-static void RunVertexTransform_(int start, int end, void* context)
+static void RunVertexTransform_(size_t id, int start, int end, void* context)
 {
     // setup vertex attribute streams
     VertexTransformCommand* command = (VertexTransformCommand*)context;
@@ -246,5 +246,5 @@ void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransformComm
 {
     PROFILE_AUTO("Vertex Transform");
     if (parallelize) ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE, &RunVertexTransform_, command);
-    else RunVertexTransform_(0, numPrimitives, command);
+    else RunVertexTransform_(0, 0, numPrimitives, command);
 }

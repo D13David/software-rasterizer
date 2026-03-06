@@ -45,6 +45,8 @@ using AtomicInt = std::atomic<int>;
 #define MAX_TRIS_PER_TILE   1024*128
 #define MAX_TILES           ((1920 / TILE_WIDTH) * (1080 / TILE_HEIGHT))
 
+#define THREAD_GROUP_SIZE_BINNING 32
+
 #define THREAD_GROUP_SIZE  128
 
 typedef struct RasterContext
@@ -88,12 +90,12 @@ typedef struct VertexTransformCommand
     mat4                ProjectionMatrix;
 } VertexTransformCommand;
 
-extern struct ThreadPool*   ThreadPool;
-extern RasterContext        Ctx;
-extern struct ExportBuffer* ExportBuffer;
-extern ScreenTile           Tiles[MAX_TILES];
-extern vec2i                TileIndexToCoord[TILE_WIDTH * TILE_HEIGHT];
-extern int                  CoordToTileIndex[TILE_WIDTH][TILE_HEIGHT];
+extern struct ThreadPool*    ThreadPool;
+extern RasterContext         Ctx;
+extern struct ExportBuffer*  ExportBuffer;
+extern ScreenTile            Tiles[MAX_TILES];
+extern vec2i                 TileIndexToCoord[TILE_WIDTH * TILE_HEIGHT];
+extern int                   CoordToTileIndex[TILE_WIDTH][TILE_HEIGHT];
 
 static PJD_INLINE int Edge(int x0, int y0, int x1, int y1, int x2, int y2)
 {

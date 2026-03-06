@@ -5,11 +5,76 @@
 #include "thread_pool.h"
 #include "parallel_for.h"
 
-ScreenTile Tiles[MAX_TILES];
+#include <algorithm>
 
-static void RunTriangleBinning_(int indexStart, int indexEnd, void* context)
+#define LOCAL_TILE_CACHE_SIZE 128
+#define MAX_BINNING_WORKERS   16
+
+typedef struct BinnedTriangle
+{
+    uint16_t tile;
+    uint32_t index;
+} BinnedTriangle;
+
+typedef PJD_ALIGN(16) struct ThreadLocalTileCache
+{
+    BinnedTriangle Triangles[LOCAL_TILE_CACHE_SIZE];
+    int            NumBinnedTriangles;
+} ThreadLocalTileCache;
+
+ThreadLocalTileCache  ThreadTileCache[MAX_BINNING_WORKERS];
+ScreenTile            Tiles[MAX_TILES];
+
+static int CompareCacheEntry(const void* a, const void* b)
+{
+    return ((const BinnedTriangle*)a)->tile - ((const BinnedTriangle*)b)->tile;
+}
+
+template<bool Synchronized>
+static PJD_INLINE void FlushTileCache(ThreadLocalTileCache* cache)
+{
+    qsort(cache->Triangles, cache->NumBinnedTriangles, sizeof(BinnedTriangle), CompareCacheEntry);
+
+    for (int i = 0; i < cache->NumBinnedTriangles; )
+    {
+        int tileIndex = cache->Triangles[i].tile;
+        int start = i;
+
+        while (i < cache->NumBinnedTriangles && cache->Triangles[i].tile == tileIndex) {
+            i++;
+        }
+
+        int count = i - start;
+
+        ScreenTile* tile = &Tiles[tileIndex];
+
+        int base;
+        if constexpr (Synchronized == false) {
+            base = std::atomic_fetch_add_explicit(
+                &tile->NumTriangles,
+                count,
+                std::memory_order_relaxed);
+        } 
+        else {
+            base = tile->NumTriangles;
+            tile->NumTriangles = base + count;
+        }
+
+        assert(base + count < MAX_TRIS_PER_TILE);
+
+        for (int j = 0; j < count; j++) {
+            tile->BinnedTriangles[base + j] = cache->Triangles[start + j].index;
+        }
+    }
+
+    cache->NumBinnedTriangles = 0;
+}
+
+static void RunTriangleBinning_(size_t id, int indexStart, int indexEnd, void* context)
 {
     ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer);
+
+    ThreadLocalTileCache* tileCache = &ThreadTileCache[id];
 
     for (int i = indexStart; i < indexEnd; ++i)
     {
@@ -40,10 +105,16 @@ static void RunTriangleBinning_(int indexStart, int indexEnd, void* context)
             for (int x = minTileX; x <= maxTileX; ++x)
             {
                 int tileIndex = y * TILE_COUNT_X + x;
-                ScreenTile* tile = &Tiles[tileIndex];
-                int index = std::atomic_fetch_add_explicit(&tile->NumTriangles, 1, std::memory_order_relaxed);
-                assert(index < MAX_TRIS_PER_TILE);
-                tile->BinnedTriangles[index] = i;
+
+                assert(tileCache->NumBinnedTriangles < LOCAL_TILE_CACHE_SIZE);
+                tileCache->Triangles[tileCache->NumBinnedTriangles].index = i;
+                tileCache->Triangles[tileCache->NumBinnedTriangles].tile = tileIndex;
+                tileCache->NumBinnedTriangles++;
+
+                [[unlikely]]
+                if (tileCache->NumBinnedTriangles >= LOCAL_TILE_CACHE_SIZE) {
+                    FlushTileCache<false>(tileCache);
+                }
             }
         }
     }
@@ -53,11 +124,18 @@ void RunTriangleBinning(bool parallelize)
 {
     PROFILE_AUTO("Triangle Binning");
 
+    assert(MAX_BINNING_WORKERS >= ThreadPoolGetNumWorkers(ThreadPool));
+
     for (int i = 0; i < MAX_TILES; ++i) {
         Tiles[i].NumTriangles = 0;
     }
 
     int numTrianglesWritten = (int)(ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex)) / 3;
-    if (parallelize) ParallelFor(ThreadPool, 0, numTrianglesWritten, 16, &RunTriangleBinning_, NULL);
-    else RunTriangleBinning_(0, numTrianglesWritten, NULL);
+    if (parallelize) ParallelFor(ThreadPool, 0, numTrianglesWritten, THREAD_GROUP_SIZE_BINNING, &RunTriangleBinning_, NULL);
+    else RunTriangleBinning_(0, 0, numTrianglesWritten, NULL);
+
+    // flush remaining cache entries
+    for (int tid = 0; tid < ThreadPoolGetNumWorkers(ThreadPool); ++tid) {
+        FlushTileCache<true>(&ThreadTileCache[tid]);
+    }
 }
