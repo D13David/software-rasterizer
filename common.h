@@ -9,7 +9,9 @@
 #include <stdarg.h>
 #include <math.h>
 
-#define PJD_USE_RENDER_STATS 1
+#ifndef PJD_PROFILING_BUILD
+#   define PJD_USE_RENDER_STATS 1
+#endif
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>

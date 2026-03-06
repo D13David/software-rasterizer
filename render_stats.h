@@ -26,7 +26,9 @@ extern RenderStats Stats;
 #   define RENDER_STATS_ADD(name, value)
 #endif
 
+#if PJD_USE_RENDER_STATS
 void ResetRenderStats();
 void DrawRenderStats(int posX, int posY);
+#endif // PJD_USE_RENDER_STATS
 
 #endif // PJD_RENDER_STATS_H

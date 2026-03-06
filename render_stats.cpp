@@ -1,3 +1,5 @@
+#if PJD_USE_RENDER_STATS
+
 #include "render_stats.h"
 #include "raster.h"
 
@@ -26,3 +28,5 @@ void DrawRenderStats(int posX, int posY)
     WriteString(Format("Tiles (Full): %d", Stats.TilesFull.load()), posX, offsetY), offsetY += 10;
     WriteString(Format("Tiles (Partial): %d", Stats.TilesPartial.load()), posX, offsetY), offsetY += 10;
 }
+
+#endif // PJD_USE_RENDER_STATS
