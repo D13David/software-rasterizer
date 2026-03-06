@@ -117,12 +117,12 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
 {
     // setup vertex attribute streams
     VertexTransformCommand* command = (VertexTransformCommand*)context;
-    int stride = InputStreamElementSize(command->Elements, command->NumInputElements);
+    int stride = InputStreamStride(command->Elements, command->NumInputElements);
 
-    const InputElement* inputElementPosition = InputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypePosition);
+    const InputElementDescriptor* inputElementPosition = InputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::Position);
     assert(inputElementPosition != NULL);
 
-    const InputElement* inputElementTexcoord = InputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::TypeTexcoord);
+    const InputElementDescriptor* inputElementTexcoord = InputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::Texcoord);
     assert(inputElementTexcoord != NULL);
 
     int index = start;
@@ -140,14 +140,14 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
 
         for (; index < end && exportVertexPtr < exportVertexEndPtr; ++index)
         {
-            float* pos0 = (float*)InputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 0]);
-            float* pos1 = (float*)InputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 1]);
-            float* pos2 = (float*)InputStreamElement(command->Data, *inputElementPosition, stride, command->Indices[index * 3 + 2]);
+            float* pos0 = (float*)InputStreamElementPtr(command->Data, inputElementPosition, stride, command->Indices[index * 3 + 0]);
+            float* pos1 = (float*)InputStreamElementPtr(command->Data, inputElementPosition, stride, command->Indices[index * 3 + 1]);
+            float* pos2 = (float*)InputStreamElementPtr(command->Data, inputElementPosition, stride, command->Indices[index * 3 + 2]);
 
             float* tex[3];
-            tex[0] = (float*)InputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 0]);
-            tex[1] = (float*)InputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 1]);
-            tex[2] = (float*)InputStreamElement(command->Data, *inputElementTexcoord, stride, command->Indices[index * 3 + 2]);
+            tex[0] = (float*)InputStreamElementPtr(command->Data, inputElementTexcoord, stride, command->Indices[index * 3 + 0]);
+            tex[1] = (float*)InputStreamElementPtr(command->Data, inputElementTexcoord, stride, command->Indices[index * 3 + 1]);
+            tex[2] = (float*)InputStreamElementPtr(command->Data, inputElementTexcoord, stride, command->Indices[index * 3 + 2]);
 
             vec4 pos[3];
             Matrix4MulVec3(command->ProjectionMatrix, pos0, 1, pos[0]);

@@ -32,7 +32,7 @@ typedef struct Mesh
     uint16_t     NumAnimSeqs;
 
     // FIXME: detach this from mesh
-    InputElement InputDesc[3];
+    InputElementDescriptor InputDesc[3];
     int          NumInputElements;
 
     uint32_t     NumVertsPerFrame;

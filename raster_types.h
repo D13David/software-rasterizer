@@ -19,27 +19,32 @@ typedef struct RasterizerDesc
     void*       DepthBufferPtr;
 } RasterizerDesc;
 
-enum InputElementFormat
+enum class InputElementFormat
 {
-    FormatRG32F,
-    FormatRGB32F,
-    FormatRGBA32F
+    FLOAT2,
+    FLOAT3,
+    FLOAT4,
+    UINT8_4,
 };
 
-enum InputElementType
+typedef enum class InputElementType
 {
-    TypePosition,
-    TypeTexcoord,
-    TypeNormal,
-    TypeColor,
-};
+    Position,
+    Texcoord,
+    Normal,
+    Color,
+} InputElementType;
 
-struct InputElement
+typedef struct InputElementDescriptor
 {
-    InputElementType Type;
+    InputElementType   Type;
+    uint32_t           TypeIndex;
     InputElementFormat Format;
-    uint32_t Offset;
-};
+    uint32_t           StreamIndex;
+    uint32_t           Offset;
+} InputElementDescriptor;
+
+static const uint32_t APPEND_ALIGNED_ELEMENT = uint32_t(-1);
 
 enum TextureFilter
 {

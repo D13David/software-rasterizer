@@ -85,7 +85,7 @@ typedef struct VertexTransformCommand
 {
     const void*         Data;
     const uint32_t*     Indices;
-    const InputElement* Elements;
+    const InputElementDescriptor* Elements;
     int                 NumInputElements;
     mat4                ProjectionMatrix;
 } VertexTransformCommand;

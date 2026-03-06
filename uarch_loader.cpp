@@ -506,13 +506,13 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
     *outMesh = mesh;
 
     // position (float3)
-    mesh->InputDesc[0].Type = InputElementType::TypePosition;
-    mesh->InputDesc[0].Format = InputElementFormat::FormatRGB32F;
+    mesh->InputDesc[0].Type = InputElementType::Position;
+    mesh->InputDesc[0].Format = InputElementFormat::FLOAT3;
     mesh->InputDesc[0].Offset = 0;
 
     // texcoord (float2)
-    mesh->InputDesc[1].Type = InputElementType::TypeTexcoord;
-    mesh->InputDesc[1].Format = InputElementFormat::FormatRG32F;
+    mesh->InputDesc[1].Type = InputElementType::Texcoord;
+    mesh->InputDesc[1].Format = InputElementFormat::FLOAT2;
     mesh->InputDesc[1].Offset = mesh->InputDesc[0].Offset + 12;
     mesh->NumInputElements = 2;
 

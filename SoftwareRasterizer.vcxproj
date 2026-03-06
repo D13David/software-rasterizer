@@ -190,6 +190,7 @@
   <ItemGroup>
     <ClCompile Include="export_buffer.cpp" />
     <ClCompile Include="fps_meter.cpp" />
+    <ClCompile Include="input_stream.cpp" />
     <ClCompile Include="mathlib.h" />
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="mesh_loader.cpp" />
@@ -216,6 +217,7 @@
     <ClInclude Include="export_buffer.h" />
     <ClInclude Include="fast_obj.h" />
     <ClInclude Include="fps_meter.h" />
+    <ClInclude Include="input_stream.h" />
     <ClInclude Include="mat4.h" />
     <ClInclude Include="mathlib_common.h" />
     <ClInclude Include="mathlib_intrinsics.h" />

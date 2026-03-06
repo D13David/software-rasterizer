@@ -193,10 +193,10 @@ void SceneRenderFrame()
     SetTextureFilter(TextureFilter::Unreal);
     SetDrawMode(DrawMode::Solid);
 
-    InputElement VertexLayout[] = {
-        { TypePosition,  FormatRGB32F, offsetof(Vertex, pos)},
-        { TypeTexcoord,  FormatRG32F,  offsetof(Vertex, uv)},
-        { TypeNormal,    FormatRGB32F, offsetof(Vertex, normal)},
+    InputElementDescriptor VertexLayout[] = {
+        { InputElementType::Position, 0,  InputElementFormat::FLOAT3, 0, offsetof(Vertex, pos) },
+        { InputElementType::Texcoord, 0,  InputElementFormat::FLOAT2, 0, offsetof(Vertex, uv) },
+        { InputElementType::Normal,   0,  InputElementFormat::FLOAT3, 0, offsetof(Vertex, normal) },
     };
     uint32_t VertexLayoutCount = sizeof(VertexLayout) / sizeof(VertexLayout[0]);
 

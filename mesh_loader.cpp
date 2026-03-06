@@ -82,11 +82,11 @@ int GenerateMeshTriangle(Mesh** outputMesh)
 
     *outputMesh = mesh;
 
-    mesh->InputDesc[0].Type = InputElementType::TypePosition;
-    mesh->InputDesc[0].Format = InputElementFormat::FormatRGB32F;
+    mesh->InputDesc[0].Type = InputElementType::Position;
+    mesh->InputDesc[0].Format = InputElementFormat::FLOAT3;
     mesh->InputDesc[0].Offset = 0;
-    mesh->InputDesc[1].Type = InputElementType::TypeTexcoord;
-    mesh->InputDesc[1].Format = InputElementFormat::FormatRG32F;
+    mesh->InputDesc[1].Type = InputElementType::Texcoord;
+    mesh->InputDesc[1].Format = InputElementFormat::FLOAT2;
     mesh->InputDesc[1].Offset = mesh->InputDesc[0].Offset + 12; // color float3
     mesh->NumInputElements = 2;
 
@@ -133,12 +133,12 @@ int GenerateMeshQuad(Mesh** outputMesh, float width, float height)
 
     *outputMesh = mesh;
 
-    mesh->InputDesc[0].Type = InputElementType::TypePosition;
-    mesh->InputDesc[0].Format = InputElementFormat::FormatRGB32F;
+    mesh->InputDesc[0].Type = InputElementType::Position;
+    mesh->InputDesc[0].Format = InputElementFormat::FLOAT3;
     mesh->InputDesc[0].Offset = 0;
 
-    mesh->InputDesc[1].Type = InputElementType::TypeTexcoord;
-    mesh->InputDesc[1].Format = InputElementFormat::FormatRG32F;
+    mesh->InputDesc[1].Type = InputElementType::Texcoord;
+    mesh->InputDesc[1].Format = InputElementFormat::FLOAT2;
     mesh->InputDesc[1].Offset = 12;
 
     mesh->NumInputElements = 2;
@@ -222,11 +222,11 @@ int LoadMeshFromFile(const char* filename, Mesh** outputMesh)
 
     *outputMesh = mesh;
 
-    mesh->InputDesc[0].Type = InputElementType::TypePosition;
-    mesh->InputDesc[0].Format = InputElementFormat::FormatRGB32F;
+    mesh->InputDesc[0].Type = InputElementType::Position;
+    mesh->InputDesc[0].Format = InputElementFormat::FLOAT3;
     mesh->InputDesc[0].Offset = 0;
-    mesh->InputDesc[1].Type = InputElementType::TypeTexcoord;
-    mesh->InputDesc[1].Format = InputElementFormat::FormatRG32F;
+    mesh->InputDesc[1].Type = InputElementType::Texcoord;
+    mesh->InputDesc[1].Format = InputElementFormat::FLOAT2;
     mesh->InputDesc[1].Offset = mesh->InputDesc[0].Offset + 12; // color float3
     mesh->NumInputElements = 2;
 

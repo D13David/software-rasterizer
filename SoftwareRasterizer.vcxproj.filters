@@ -91,6 +91,9 @@
     <ClCompile Include="test_scene_sponza.cpp">
       <Filter>Source Files\test_scenes</Filter>
     </ClCompile>
+    <ClCompile Include="input_stream.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="raster.h">
@@ -167,6 +170,9 @@
     </ClInclude>
     <ClInclude Include="vec3.h">
       <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="input_stream.h">
+      <Filter>renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

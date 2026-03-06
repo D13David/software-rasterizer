@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "raster_common.h"
+#include "input_stream.h"
 #include "mathlib.h"
 
 #if PJD_DEBUG_VIEW_ENABLED
@@ -29,7 +30,7 @@ void SetDebugMode(DebugMode mode);
 void Clear(Color color);
 void DrawPixel(int x, int y, Color color);
 void DrawPixelToScreen(int x, int y, Color color);
-void DrawTriangleList(const void* data, const uint32_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
+void DrawTriangleList(const void* data, const uint32_t* indices, const InputElementDescriptor* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
 void ResolveFrameBuffer();
 
 /*----------------------------------------------------------------------------
@@ -40,12 +41,5 @@ void DrawRectangle(int x, int y, int w, int h, Color color, FillStyle style = SO
 void DrawCircle(int cx, int cy, int radius, uint32_t color, FillStyle style = SOLID_FILL);
 void DrawEllipse(int cx, int cy, int rx, int ry, uint32_t color, FillStyle style = SOLID_FILL);
 void WriteString(const char* text, int posX, int posY, uint32_t color = COLOR(1,1,1));
-
-/*----------------------------------------------------------------------------
-    Input Assembler
-----------------------------------------------------------------------------*/
-int InputStreamElementSize(const InputElement* elements, int numElements);
-const InputElement* InputStreamElementByType(const InputElement* elements, int numElements, InputElementType type);
-const void* InputStreamElement(const void* stream, InputElement element, int stride, int index);
 
 #endif // PJD_RASTER_H

@@ -186,7 +186,7 @@ static void RunDrawTrianglesWireframe(Color color)
     }
 }
 
-void DrawTriangleList(const void* data, const uint32_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
+void DrawTriangleList(const void* data, const uint32_t* indices, const InputElementDescriptor* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
 {
     VertexTransformCommand command = {
         .Data = data,
@@ -284,52 +284,4 @@ void ResolveFrameBuffer()
 #else
     memcpy(outCB, ColorBuffer[Frame], FB_WIDTH * FB_HEIGHT * sizeof(uint32_t));
 #endif
-}
-
-static int FormatToSize(InputElementFormat format)
-{
-    switch (format)
-    {
-    case InputElementFormat::FormatRG32F:   return sizeof(float) * 2;
-    case InputElementFormat::FormatRGB32F:  return sizeof(float) * 3;
-    case InputElementFormat::FormatRGBA32F: return sizeof(float) * 4;
-    }
-    return -1;
-}
-
-int InputStreamElementSize(const InputElement* elements, int numElements)
-{
-    assert(elements != NULL);
-    assert(numElements >= 1);
-
-    uint32_t maxOffset = elements[0].Offset;
-    InputElementFormat lastElementFormat = elements[0].Format;
-
-    for (int i = 1; i < numElements; ++i)
-    {
-        if (elements[i].Offset > maxOffset)
-        {
-            maxOffset = elements[i].Offset;
-            lastElementFormat = elements[i].Format;
-        }
-    }
-
-    return maxOffset + FormatToSize(lastElementFormat);
-}
-
-const InputElement* InputStreamElementByType(const InputElement* elements, int numElements, InputElementType type)
-{
-    for (int i = 0; i < numElements; ++i)
-    {
-        if (elements[i].Type == type) {
-            return &elements[i];
-        }
-    }
-    return nullptr;
-}
-
-const void* InputStreamElement(const void* stream, InputElement element, int stride, int index)
-{
-    const uint8_t* elementStart = (const uint8_t*)stream + element.Offset;
-    return elementStart + index * stride;
 }

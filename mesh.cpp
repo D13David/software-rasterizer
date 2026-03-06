@@ -54,7 +54,7 @@ const MeshAnimSeq* FindAnimSequence(Mesh* mesh, const char* name)
 
 static void UpdateFramesExplicite(Mesh* mesh, int frameOffset1, int frameOffset2, float blendFactor)
 {
-    int vertexSize = InputStreamElementSize(mesh->InputDesc, mesh->NumInputElements);
+    int vertexSize = InputStreamStride(mesh->InputDesc, mesh->NumInputElements);
 
     float* uvReference = (float*)mesh->VertexBuffer;
     float* frame1Start = (float*)((uint8_t*)mesh->VertexBuffer + (frameOffset1 * vertexSize));
