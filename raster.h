@@ -13,7 +13,7 @@ typedef enum DebugMode
     DM_FaceDerivatives,
     DM_FaceMipMapLevel,
     DM_DepthBuffer
-};
+} DebugMode;
 #endif
 
 void RasterizerInitialize(const RasterizerDesc& init);

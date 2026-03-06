@@ -37,6 +37,6 @@ typedef enum LineStyle
     DOTTED_LINE,
     CENTER_LINE,
     DASHED_LINE
-};
+} LineStyle;
 
 #endif // PJD_RASTER_COMMON_H
