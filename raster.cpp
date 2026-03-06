@@ -27,7 +27,7 @@ void RasterizerInitialize(const RasterizerDesc& init)
         .DB = init.DepthBufferPtr
     };
 
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
     Ctx.DebugMode = DM_None;
 #endif
 
@@ -88,7 +88,7 @@ void SetDrawMode(DrawMode drawMode)
     Ctx.DrawMode = drawMode;
 }
 
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
 void SetDebugMode(DebugMode mode)
 {
     Ctx.DebugMode = mode;
@@ -248,7 +248,7 @@ void ResolveFrameBuffer()
     }
 #endif 
 
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
     if (Ctx.DebugMode == DM_DepthBuffer)
     {
         // just overrid the colorbuffer so tile resolve is done automatically

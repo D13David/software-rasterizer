@@ -11,6 +11,7 @@
 
 #ifndef PJD_PROFILING_BUILD
 #   define PJD_USE_RENDER_STATS 1
+#   define PJD_DEBUG_VIEW_ENABLED 1
 #endif
 
 #define WIN32_LEAN_AND_MEAN

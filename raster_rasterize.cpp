@@ -158,7 +158,7 @@ typedef struct Interpolants
 
 #define I(idx, attr) interpolants[idx].attr
 
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
 typedef struct DebugParams
 {
     float dudx;
@@ -168,7 +168,7 @@ typedef struct DebugParams
 }; 
 #endif
 
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
 #define DEBUG_VIEW_ONLY_ARG(...) ,__VA_ARGS__
 #else
 #define DEBUG_VIEW_ONLY_ARG(...)
@@ -176,7 +176,7 @@ typedef struct DebugParams
 
 static PJD_INLINE Color ShadePixel(float mipLevel, const Interpolants* interp DEBUG_VIEW_ONLY_ARG(DebugParams params))
 {
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
     switch (Ctx.DebugMode)
     {
 #if DEBUG_MIP_LEVELS
@@ -297,7 +297,7 @@ static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const Expor
             int posY = y;
 #endif
 
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
             DebugParams debugParams = { dudx, dudy, dvdx, dvdy };
 #endif
 

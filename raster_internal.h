@@ -11,7 +11,7 @@ using AtomicInt = std::atomic<int>;
 // enable tiled framebuffer layout
 #define ENABLE_TILED_FRAMEBUFFER_LAYOUT 1
 
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
     // enable for rendering color coded mip-map levels
     #define DEBUG_MIP_LEVELS 1
 
@@ -58,7 +58,7 @@ typedef struct RasterContext
     TextureFilter   Filter;
     TextureView     Texture;
     DrawMode        DrawMode;
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
     DebugMode       DebugMode;
 #endif
 } RasterContext;

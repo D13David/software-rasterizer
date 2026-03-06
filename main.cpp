@@ -41,7 +41,7 @@ static Command Commands[] =
     { VK_F1, "Toggle Help",              []() { ShowHelp = !ShowHelp; }},
     { 'W',   "Toggle Wireframe Overlay", []() { WireFrameOverlay = !WireFrameOverlay; } },
     { 'H',   "Toggle Perf Metrics",      []() { ShowPerformanceMetrics = !ShowPerformanceMetrics; } },
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
     { '0',   "Scene Rendering",          []() { SetDebugMode(DM_None); }},
     { '1',   "Show Face Mip-Levels",     []() { SetDebugMode(DM_FaceMipMapLevel); } },
     { '2',   "Show Face Derivatives",    []() { SetDebugMode(DM_FaceDerivatives); } },

@@ -5,9 +5,7 @@
 #include "raster_common.h"
 #include "mathlib.h"
 
-#define DEBUG_VIEW 1
-
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
 typedef enum DebugMode
 {
     DM_None,
@@ -24,7 +22,7 @@ void RasterizerDestroy();
 void SetTextureFilter(TextureFilter filter);
 void SetTextureView(TextureView texture);
 void SetDrawMode(DrawMode drawMode);
-#if DEBUG_VIEW
+#if PJD_DEBUG_VIEW_ENABLED
 void SetDebugMode(DebugMode mode);
 #endif
 
