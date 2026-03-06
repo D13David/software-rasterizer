@@ -13,7 +13,8 @@ typedef enum DebugMode
     DM_None,
     DM_TileClassification,
     DM_FaceDerivatives,
-    DM_FaceMipMapLevel
+    DM_FaceMipMapLevel,
+    DM_DepthBuffer
 };
 #endif
 
@@ -30,7 +31,7 @@ void SetDebugMode(DebugMode mode);
 void Clear(Color color);
 void DrawPixel(int x, int y, Color color);
 void DrawPixelToScreen(int x, int y, Color color);
-void DrawTriangleList(const void* data, const uint16_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
+void DrawTriangleList(const void* data, const uint32_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
 void ResolveFrameBuffer();
 
 /*----------------------------------------------------------------------------

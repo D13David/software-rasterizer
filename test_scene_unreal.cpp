@@ -122,8 +122,6 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 
 void SceneRenderFrame()
 {
-    PROFILE_AUTO("Frame");
-
     {
         PROFILE_AUTO("Update Animations");
 

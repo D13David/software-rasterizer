@@ -88,6 +88,9 @@
     <ClCompile Include="test_scene_unreal.cpp">
       <Filter>Source Files\test_scenes</Filter>
     </ClCompile>
+    <ClCompile Include="test_scene_sponza.cpp">
+      <Filter>Source Files\test_scenes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="raster.h">
@@ -155,6 +158,15 @@
     </ClInclude>
     <ClInclude Include="shared.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fast_obj.h">
+      <Filter>extern</Filter>
+    </ClInclude>
+    <ClInclude Include="uthash.h">
+      <Filter>extern</Filter>
+    </ClInclude>
+    <ClInclude Include="vec3.h">
+      <Filter>math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

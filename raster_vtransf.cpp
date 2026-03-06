@@ -35,7 +35,7 @@ static PJD_INLINE ClipVertex Clip(const ClipVertex* v0, const ClipVertex* v1, fl
     return out;
 }
 
-static int ClipPolygonAgainstPlane(const vec4 plane, ClipVertex* verts, int numVertices, ClipVertex* clippedVerts)
+static int ClipPolygonAgainstPlane(const vec4 plane, const ClipVertex* verts, int numVertices, ClipVertex* clippedVerts)
 {
     assert(numVertices != 0);
 
@@ -159,7 +159,7 @@ static void RunVertexTransform_(int start, int end, void* context)
             uint8_t out1 = VertexOutcode(pos[1]);
             uint8_t out2 = VertexOutcode(pos[2]);
 
-            // vertex is fully outside, we can skip it
+            // triangle is fully outside, we can skip it
             if ((out0 & out1 & out2) != 0)
             {
                 RENDER_STATS_ADD(TrianglesCulled, 1);
@@ -189,7 +189,7 @@ static void RunVertexTransform_(int start, int end, void* context)
                 for (int i = 0; i < 3; ++i)
                 {
                     Vec4Copy(pos[i], input[i].ClipSpacePos);
-                    Vec4Copy(tex[i], input[i].TexCoords);
+                    Vec2Copy(tex[i], input[i].TexCoords);
                 }
 
                 numClippedVertices = ClipTriangleAgainstFrustum(input, out0, out1, out2, clipped);
@@ -200,27 +200,28 @@ static void RunVertexTransform_(int start, int end, void* context)
                 for (int i = 0; i < 3; ++i)
                 {
                     Vec4Copy(pos[i], clipped[i].ClipSpacePos);
-                    Vec4Copy(tex[i], clipped[i].TexCoords);
+                    Vec2Copy(tex[i], clipped[i].TexCoords);
                 }
                 numClippedVertices = 3;
             }
 
+            ClipVertex v0 = clipped[0];
+            ClipToScreen(v0.ClipSpacePos, FB_WIDTH - 1, FB_HEIGHT - 1, v0.ClipSpacePos);
+
             for (int i = 1; i < numClippedVertices - 1; ++i)
             {
-                ClipVertex v0 = clipped[0];
                 ClipVertex v1 = clipped[i];
-                ClipVertex v2 = clipped[i + 1];
-
-                ClipToScreen(v0.ClipSpacePos, FB_WIDTH - 1, FB_HEIGHT - 1, v0.ClipSpacePos);
                 ClipToScreen(v1.ClipSpacePos, FB_WIDTH - 1, FB_HEIGHT - 1, v1.ClipSpacePos);
+
+                ClipVertex v2 = clipped[i + 1];
                 ClipToScreen(v2.ClipSpacePos, FB_WIDTH - 1, FB_HEIGHT - 1, v2.ClipSpacePos);
 
 #define EXPORT_VERTEX(idx, vert) do {                                   \
-        float invW = 1.0f / vert.ClipSpacePos[3];                       \
+        float invW = vert.ClipSpacePos[3];                              \
         exportVertexPtr[(idx)].ScreenX = (int)vert.ClipSpacePos[0];     \
         exportVertexPtr[(idx)].ScreenY = (int)vert.ClipSpacePos[1];     \
         exportVertexPtr[(idx)].InvW    = invW;                          \
-        exportVertexPtr[(idx)].ZOverW  = vert.ClipSpacePos[2] * invW;   \
+        exportVertexPtr[(idx)].Z       = vert.ClipSpacePos[2];          \
         exportVertexPtr[(idx)].UOverW  = vert.TexCoords[0] * invW;      \
         exportVertexPtr[(idx)].VOverW  = vert.TexCoords[1] * invW;      \
     } while (0)

@@ -156,7 +156,7 @@ typedef struct Interpolants
     int     px, py;
 } Interpolants;
 
-#define I(idx, attr) interpolants[idx].##attr
+#define I(idx, attr) interpolants[idx].attr
 
 #if DEBUG_VIEW
 typedef struct DebugParams
@@ -268,8 +268,8 @@ static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const Expor
                 I(i,px) = x + (i & 1);
                 I(i,py) = y + (i >> 1);
 
-                float depth = 1.0f /   (w0 * v0->InvW   + w1 * v1->InvW   + w2 * v2->InvW);
-                I(i,z)      = (w0 * v0->ZOverW + w1 * v1->ZOverW + w2 * v2->ZOverW) * depth;
+                float depth = 1.0f / (w0 * v0->InvW + w1 * v1->InvW + w2 * v2->InvW);
+                I(i,z)      = (w0 * v0->Z + w1 * v1->Z + w2 * v2->Z);
                 I(i,u)      = (w0 * v0->UOverW + w1 * v1->UOverW + w2 * v2->UOverW) * depth;
                 I(i,v)      = (w0 * v0->VOverW + w1 * v1->VOverW + w2 * v2->VOverW) * depth;
             }

@@ -36,6 +36,10 @@ static bool LoadTextureFromFileTGA(const char* filename, int& width, int& height
     bool result;
     size_t size;
 
+    if (!filename) {
+        return false;
+    }
+
     result = true;
 
     fp = NULL;
@@ -59,11 +63,41 @@ static bool LoadTextureFromFileTGA(const char* filename, int& width, int& height
         goto fail;
     }
 
-    size = header.width * header.height * header.bitsperpixel / 8;
+    size = header.width * header.height * sizeof(uint32_t);
     dataBGRA = (uint8_t*)malloc(size);
 
-    if (fread(dataBGRA, 1, size, fp) != size) {
-        goto fail;
+    if (header.bitsperpixel == 32)
+    {
+        if (fread(dataBGRA, 1, size, fp) != size) {
+            goto fail;
+        }
+    }
+    else if (header.bitsperpixel == 24)
+    {
+        const size_t BUFFER_SIZE = 64 * 1024; // 64 KB
+        uint32_t* dst = (uint32_t*)dataBGRA;
+        size_t pixelsRemaining = header.width * header.height;
+
+        uint8_t buffer[BUFFER_SIZE];
+        while (pixelsRemaining > 0) 
+        {
+            size_t pixelsToRead = (BUFFER_SIZE / 3);
+            if (pixelsToRead > pixelsRemaining) {
+                pixelsToRead = pixelsRemaining;
+            }
+
+            size_t bytesRead = fread(buffer, 1, pixelsToRead * 3, fp);
+            if (bytesRead != pixelsToRead * 3) {
+                goto fail;
+            }
+
+            uint8_t* src = buffer;
+            for (size_t i = 0; i < pixelsToRead; i++, src += 3) {
+                *dst++ = RGB(src[0], src[1], src[2]);
+            }
+
+            pixelsRemaining -= pixelsToRead;
+        }
     }
 
     goto cleanup;
@@ -257,7 +291,7 @@ TextureView LoadTexture(const char* path)
     // TODO: add some proper resource management here
 
     int width, height;
-    void* loadingBuffer;
+    void* loadingBuffer = NULL;
     if (!LoadTextureFromFileTGA(path, width, height, loadingBuffer))
     {
         return GNullTexture;

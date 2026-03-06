@@ -6,7 +6,7 @@
 #include "profile.h"
 #include "parallel_for.h"
 
-#define EXPORT_BUFFER_SIZE (32 * 1024 * 1024)
+#define EXPORT_BUFFER_SIZE (128 * 1024 * 1024)
 
 RasterContext       Ctx;
 ThreadPoolHandle    ThreadPool;
@@ -58,10 +58,18 @@ void RasterizerInitialize(const RasterizerDesc& init)
             CoordToTileIndex[y][x] = Encode6BitMorton(x, y);
         }
     }
+
+    int* tileBinningBuffer = (int*)malloc(MAX_TILES * MAX_TRIS_PER_TILE * sizeof(int));
+
+    for (int i = 0; i < MAX_TILES; ++i)
+    {
+        Tiles[i].BinnedTriangles = &tileBinningBuffer[i * MAX_TRIS_PER_TILE];
+    }
 }
 
 void RasterizerDestroy()
 {
+    free(Tiles[0].BinnedTriangles);
     ThreadPoolDestroy(ThreadPool, ShutdownMode::IMMEDIATE);
 }
 
@@ -174,13 +182,13 @@ static void RunDrawTrianglesWireframe(Color color)
         ExportVertex* v0 = &vertexStart[i+0];
         ExportVertex* v1 = &vertexStart[i+1];
         ExportVertex* v2 = &vertexStart[i+2];
-        DrawLine(v0->ScreenX, v0->ScreenY, v1->ScreenX, v1->ScreenY, color);
-        DrawLine(v1->ScreenX, v1->ScreenY, v2->ScreenX, v2->ScreenY, color);
-        DrawLine(v2->ScreenX, v2->ScreenY, v0->ScreenX, v0->ScreenY, color);
+        DrawLine(v0->ScreenX, v0->ScreenY, v1->ScreenX, v1->ScreenY, color, 2);
+        DrawLine(v1->ScreenX, v1->ScreenY, v2->ScreenX, v2->ScreenY, color, 2);
+        DrawLine(v2->ScreenX, v2->ScreenY, v0->ScreenX, v0->ScreenY, color, 2);
     }
 }
 
-void DrawTriangleList(const void* data, const uint16_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
+void DrawTriangleList(const void* data, const uint32_t* indices, const InputElement* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
 {
     VertexTransformCommand command = {
         .Data = data,
@@ -239,6 +247,20 @@ void ResolveFrameBuffer()
         DebugViewTileCoverage();
     }
 #endif 
+
+#if DEBUG_VIEW
+    if (Ctx.DebugMode == DM_DepthBuffer)
+    {
+        // just overrid the colorbuffer so tile resolve is done automatically
+        for (int i = 0; i < FB_HEIGHT * FB_WIDTH; ++i) 
+        {
+            const float zf = 1000.0f;
+            const float zn = 10.0f;
+            float z = (zn * zf) / (zf - ((float*)Ctx.Out.DB)[i] * (zf - zn));
+            ColorBuffer[Frame][i] = COLOR(Saturate(z / zf), 0, 0);
+        }
+    }
+#endif
 
     Color* outCB = (Color*)Ctx.Out.CB;
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT

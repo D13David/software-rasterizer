@@ -46,6 +46,7 @@ static Command Commands[] =
     { '1',   "Show Face Mip-Levels",     []() { SetDebugMode(DM_FaceMipMapLevel); } },
     { '2',   "Show Face Derivatives",    []() { SetDebugMode(DM_FaceDerivatives); } },
     { '3',   "Show Tile Classification", []() { SetDebugMode(DM_TileClassification); } },
+    { '4',   "Show Depth",               []() { SetDebugMode(DM_DepthBuffer); } },
 #endif
     { 0, 0 }
 };

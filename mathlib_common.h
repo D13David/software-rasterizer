@@ -2,6 +2,7 @@
 #define PJD_MATHLIB_COMMON_H
 
 #include "mathlib_types.h"
+#include "vec3.h"
 
 #define PJD_PI      3.1415926535897932f
 #define PJD_PI_2    1.5707963267948966f
@@ -25,6 +26,11 @@ PJD_INLINE void SinCos(float value, float* s, float* c)
 PJD_INLINE float Clamp(float value, float min, float max)
 {
     return fminf(fmaxf(value, min), max);
+}
+
+PJD_INLINE float Saturate(float value)
+{
+    return Clamp(value, 0.0f, 1.0f);
 }
 
 PJD_INLINE float Lerp(float a, float b, float t) 
@@ -152,6 +158,23 @@ PJD_INLINE void CreateMatrixRotateZ(float angle, mat4 out)
     out[1][0] = s; out[1][1] = c; out[1][2] = 0; out[1][3] = 0;
     out[2][0] = 0; out[2][1] = 0; out[2][2] = 1; out[2][3] = 0;
     out[3][0] = 0; out[3][1] = 0; out[3][2] = 0; out[3][3] = 1;
+}
+
+PJD_INLINE void CreateMatrixLookAt(vec3 eye, vec3 at, vec3 up, mat4 out)
+{
+    vec3 xaxis, yaxis, zaxis;
+    Vec3Sub(at, eye, zaxis);
+    Vec3Cross(up, zaxis, xaxis), Vec3NormalizeSelf(xaxis);
+    Vec3Cross(zaxis, xaxis, yaxis);
+
+    float tx = -Vec3Dot(xaxis, eye);
+    float ty = -Vec3Dot(yaxis, eye);
+    float tz = -Vec3Dot(zaxis, eye);
+
+    out[0][0] = xaxis[0]; out[0][1] = xaxis[1]; out[0][2] = xaxis[2]; out[0][3] = tx;
+    out[1][0] = yaxis[0]; out[1][1] = yaxis[1]; out[1][2] = yaxis[2]; out[1][3] = ty;
+    out[2][0] = zaxis[0]; out[2][1] = zaxis[1]; out[2][2] = zaxis[2]; out[2][3] = tz;
+    out[3][0] = 0;        out[3][1] = 0;        out[3][2] = 0;        out[3][3] = 1;
 }
 
 //=============================================================================

@@ -42,7 +42,7 @@ using AtomicInt = std::atomic<int>;
 #endif // ENABLE_TILED_FRAMEBUFFER_LAYOUT
 #define TILE_COUNT_X        (FB_WIDTH / TILE_WIDTH)
 #define TILE_COUNT_Y        (FB_HEIGHT / TILE_HEIGHT)
-#define MAX_TRIS_PER_TILE   1024
+#define MAX_TRIS_PER_TILE   1024*128
 #define MAX_TILES           ((1920 / TILE_WIDTH) * (1080 / TILE_HEIGHT))
 
 #define THREAD_GROUP_SIZE  128
@@ -65,8 +65,8 @@ typedef struct RasterContext
 
 typedef struct ScreenTile
 {
-    int BinnedTriangles[MAX_TRIS_PER_TILE];
-    AtomicInt NumTriangles;
+    int* BinnedTriangles;
+    PJD_ALIGN(64) AtomicInt NumTriangles;
 } ScreenTile;
 
 typedef struct ExportVertex
@@ -74,7 +74,7 @@ typedef struct ExportVertex
     int   ScreenX;
     int   ScreenY;
     float InvW;             // 1 / w
-    float ZOverW;           // z / w
+    float Z;                // z
     float UOverW;           // u / w
     float VOverW;           // v / w
 } ExportVertex;
@@ -82,7 +82,7 @@ typedef struct ExportVertex
 typedef struct VertexTransformCommand
 {
     const void*         Data;
-    const uint16_t*     Indices;
+    const uint32_t*     Indices;
     const InputElement* Elements;
     int                 NumInputElements;
     mat4                ProjectionMatrix;

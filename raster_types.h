@@ -29,8 +29,9 @@ enum InputElementFormat
 enum InputElementType
 {
     TypePosition,
+    TypeTexcoord,
+    TypeNormal,
     TypeColor,
-    TypeTexcoord
 };
 
 struct InputElement
