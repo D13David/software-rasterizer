@@ -409,11 +409,11 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
     uint16_t* reverseRemap = (uint16_t*)malloc(numTriangles * 3 * sizeof(uint16_t));
     assert(reverseRemap);
 
-    uint16_t* indexBuffer = (uint16_t*)malloc(numTriangles * 3 * sizeof(uint16_t));
+    uint32_t* indexBuffer = (uint32_t*)malloc(numTriangles * 3 * sizeof(uint32_t));
     assert(indexBuffer);
 
     uint32_t newVertexCount = 0;
-    uint16_t* indexPtr = indexBuffer;
+    uint32_t* indexPtr = indexBuffer;
 
     for (int i = 0; i < numTriangles; ++i)
     {

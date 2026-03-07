@@ -9,7 +9,7 @@ extern "C" {
 
 typedef struct Surface
 {
-    uint16_t*   IndexBuffer;
+    uint32_t*   IndexBuffer;
     uint16_t    NumPrimitives;
     TextureView Texture;
 } Surface;

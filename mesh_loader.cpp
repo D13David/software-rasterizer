@@ -111,7 +111,7 @@ int GenerateMeshTriangle(Mesh** outputMesh)
     vb[2 * stride + 3] = 0;
     vb[2 * stride + 4] = 1;
 
-    uint16_t* indices = (uint16_t*)malloc(3 * sizeof(uint16_t));
+    uint32_t* indices = (uint32_t*)malloc(3 * sizeof(uint32_t));
     assert(indices != NULL);
     indices[0] = 0;
     indices[1] = 1;
@@ -186,7 +186,7 @@ int GenerateMeshQuad(Mesh** outputMesh, float width, float height)
     vb[3 * stride + 3] = 0.0f;
     vb[3 * stride + 4] = vScale;
 
-    uint16_t* indices = (uint16_t*)malloc(6 * sizeof(uint16_t));
+    uint32_t* indices = (uint32_t*)malloc(6 * sizeof(uint32_t));
     indices[0] = 0; indices[1] = 1; indices[2] = 2;
     indices[3] = 0; indices[4] = 2; indices[5] = 3;
 
@@ -230,7 +230,7 @@ int LoadMeshFromFile(const char* filename, Mesh** outputMesh)
     mesh->InputDesc[1].Offset = mesh->InputDesc[0].Offset + 12; // color float3
     mesh->NumInputElements = 2;
 
-    mesh->Surfaces[0].IndexBuffer = (uint16_t*)malloc(attrib.num_face_num_verts * 3 * sizeof(uint16_t));
+    mesh->Surfaces[0].IndexBuffer = (uint32_t*)malloc(attrib.num_face_num_verts * 3 * sizeof(uint32_t));
     mesh->Surfaces[0].NumPrimitives = attrib.num_face_num_verts;
 
     if (num_materials >= 1) {
