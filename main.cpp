@@ -120,7 +120,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
             FPSMeterUpdate();
             FPSMeterDraw(0, FB_HEIGHT - 100 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
 #if PJD_USE_RENDER_STATS
-            DrawRenderStats(FB_WIDTH - 170, 10);
+            DrawRenderStats(FB_WIDTH - 200, 10);
 #endif // PJD_USE_RENDER_STATS
         }
 

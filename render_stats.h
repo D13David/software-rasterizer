@@ -9,13 +9,13 @@ using AtomicInt = std::atomic<int>;
 
 typedef struct RenderStats
 {
-    AtomicInt    TrianglesClipped;
-    AtomicInt    TrianglesCulled;
-    AtomicInt    ZeroAreaTris;
-    AtomicInt    TrianglesRendered;
-    AtomicInt    TilesCulled;
-    AtomicInt    TilesFull;
-    AtomicInt    TilesPartial;
+    PJD_ALIGN(16) AtomicInt TrianglesClipped;
+    PJD_ALIGN(16) AtomicInt TrianglesCulled;
+    PJD_ALIGN(16) AtomicInt ZeroAreaTris;
+    PJD_ALIGN(16) AtomicInt TrianglesRendered;
+    PJD_ALIGN(16) AtomicInt TilesCulled;
+    PJD_ALIGN(16) AtomicInt TilesFull;
+    PJD_ALIGN(16) AtomicInt TilesPartial;
 } RenderStats;
 
 extern RenderStats Stats;

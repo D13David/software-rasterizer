@@ -120,7 +120,7 @@ static void HandleInput()
     vec3 tmp;
     MouseDelta(mouseDelta);
 
-#if 0
+#if 1
     Yaw   -= mouseDelta[0] * MouseSensitivity;
     Pitch += mouseDelta[1] * MouseSensitivity;
     Pitch  = Clamp(Pitch, -1.5f, 1.5f);

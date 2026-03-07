@@ -140,9 +140,7 @@ Color SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
 {
     TextureView texture = Ctx.Texture;
 
-    if (texture.Data == NULL) {
-        texture = LoadCheckerboardTexture();
-    }
+    assert(texture.Data != NULL);
 
     if (Ctx.Filter == Unreal)
     {

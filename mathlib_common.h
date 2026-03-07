@@ -76,13 +76,13 @@ PJD_INLINE void Vec4Copy(const vec4 src, vec4 dst)
 
 PJD_INLINE float Log2Fast(float x)
 {
-#if 1
+#if 0
     return log2f(x);
 #else
     union { float f; uint32_t i; } vx = { x };
-    float y = (float)(vx.i);
+    float y = (float)vx.i;
     y *= 1.1920928955078125e-7f;
-    return y - 124.22551499f;
+    return y - 127.0f;
 #endif
 }
 
