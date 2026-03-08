@@ -28,6 +28,7 @@ vec3 PlayerPos;
 float Yaw = DEG2RAD(90.0f);
 float Pitch;
 mat4 WorldViewProj;
+int centerX, centerY;
 
 float MouseSensitivity = 0.0025f;
 float MoveSpeed = 200.0f;
@@ -101,23 +102,41 @@ bool SceneInitialize()
     }
 
     fast_obj_destroy(mesh);
+
+    ShowCursor(FALSE);
+
+    centerX = GetSystemMetrics(SM_CXSCREEN) / 2;
+    centerY = GetSystemMetrics(SM_CYSCREEN) / 2;
+
+    RECT screenRect = { 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
+    ClipCursor(&screenRect);
+
+    SetCursorPos(centerX, centerY);
+
     return true;
 }
 
 void SceneDestroy()
 {
+    ClipCursor(nullptr);
+    ShowCursor(TRUE);
 }
 
 static void MouseDelta(vec2 out)
 {
-    int curX, curY;
-    Thirteen::GetMousePosition(curX, curY);
+    POINT p;
+    if (GetCursorPos(&p))
+    {
+        out[0] = centerX - p.x;
+        out[1] = centerY - p.y;
 
-    int lastX, lastY;
-    Thirteen::GetMousePositionLastFrame(lastX, lastY);
-
-    out[0] = lastX - curX;
-    out[1] = lastY - curY;
+        SetCursorPos(centerX, centerY);
+    }
+    else
+    {
+        out[0] = 0;
+        out[1] = 0;
+    }
 }
 
 static void HandleInput()
@@ -226,7 +245,7 @@ void SceneRenderFrame()
 
 void SceneRenderOverlay2D()
 {
-    WriteString(Format("Player Pos: %f, %f, %f", PlayerPos[0], PlayerPos[1], PlayerPos[2]), 10, 500);
+    //WriteString(Format("Player Pos: %f, %f, %f", PlayerPos[0], PlayerPos[1], PlayerPos[2]), 10, 500);
 }
 
 #endif // TEST_SCENE_EMPTY
