@@ -23,10 +23,10 @@ Designed to explore low-level rendering pipelines, CPU rasterization, and tiled 
 ## Screenshots
 
 <p float="left">
-  <a href="pictures/test_scene_1.png">
-    <img src="pictures/test_scene_1.png" width="49%" />
+  <a href="pictures/test_scene_1.jpg">
+    <img src="pictures/test_scene_1.jpg" width="49%" />
   </a>
-  <a href="pictures/test_scene_2.png">
-    <img src="pictures/test_scene_2.png" width="49%" />
+  <a href="pictures/test_scene_2.jpg">
+    <img src="pictures/test_scene_2.jpg" width="49%" />
   </a>
 </p>
