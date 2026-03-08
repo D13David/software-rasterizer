@@ -281,7 +281,7 @@ static const uint64_t RasterFont8x8[] = {
     0x0010000000000000ULL,
 };
 
-static void DrawPixelToScreenSafe(int x, int y, Color color)
+static void DrawPixelToScreenSafe(int x, int y, rgba8 color)
 {
     if (x < 0 || x > FB_WIDTH - 1 || y < 0 || y > FB_HEIGHT - 1) {
         return;
@@ -289,7 +289,7 @@ static void DrawPixelToScreenSafe(int x, int y, Color color)
     DrawPixelToScreen(x, y, color);
 }
 
-void DrawLine(int x0, int y0, int x1, int y1, Color color, uint8_t thickness /*= 1*/, LineStyle style /*= SOLID_LINE */)
+void DrawLine(int x0, int y0, int x1, int y1, rgba8 color, uint8_t thickness /*= 1*/, LineStyle style /*= SOLID_LINE */)
 {
     int dx = x1 - x0, dy = y1 - y0;
     int sx, sy;
@@ -369,7 +369,7 @@ static void FillHorizontalLine(int x1, int x2, int y, uint32_t color, uint8_t st
     }
 }
 
-void DrawRectangle(int posX, int posY, int w, int h, Color color, FillStyle style)
+void DrawRectangle(int posX, int posY, int w, int h, rgba8 color, FillStyle style)
 {
     if (w <= 0 || h <= 0) return;
 

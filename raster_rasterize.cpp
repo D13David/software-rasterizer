@@ -37,7 +37,7 @@ static void TouchTile(int tileIndex, TileCoverage coverage)
         Coverage[tileIndex] = coverage;
     }
 }
-static void FillTileWithColor(int tileMinX, int tileMinY, int tileMaxX, int tileMaxY, Color color)
+static void FillTileWithColor(int tileMinX, int tileMinY, int tileMaxX, int tileMaxY, rgba8 color)
 {
     for (int y = tileMinY; y <= tileMaxY; ++y)
     {
@@ -67,7 +67,7 @@ void DebugViewTileCoverage()
             continue;
         }
 
-        Color color = COLOR(1, 0, 0);
+        rgba8 color = COLOR(1, 0, 0);
         switch (Coverage[tileIndex])
         {
         case TilePartialCoverage: color = COLOR(0, 1, 0); break;
@@ -81,7 +81,7 @@ void DebugViewTileCoverage()
 #endif
 
 #if DEBUG_SCREENSPACE_DERIVATIVES
-static Color DebugViewScreenSpaceDerivatives(float dudx, float dudy, float dvdx, float dvdy)
+static rgba8 DebugViewScreenSpaceDerivatives(float dudx, float dudy, float dvdx, float dvdy)
 {
     const float maxDeriv = 1.0f / 0.05f;
     float magU = sqrt(dudx * dudx + dudy * dudy);
@@ -112,7 +112,7 @@ static const vec3 MipDebugColors[15] =
     {1.0f, 1.0f, 1.0f}      // white
 };
 
-static Color DebugViewMipLevel(float mipLevel)
+static rgba8 DebugViewMipLevel(float mipLevel)
 {
     vec3 mipDebugColor;
     int firstMipLevel = (int)mipLevel;
@@ -149,32 +149,7 @@ static TileCoverage ClassifyTile(int tileMinX, int tileMinY, int tileMaxX, int t
     return (TileCoverage)((allOutside << 1) | allInside);
 }
 
-typedef struct Interpolants
-{
-    int     cx0, cx1, cx2;
-    float   z, u, v;
-    int     px, py;
-} Interpolants;
-
-#define I(idx, attr) interpolants[idx].attr
-
-#if PJD_DEBUG_VIEW_ENABLED
-typedef struct DebugParams
-{
-    float dudx;
-    float dudy;
-    float dvdx;
-    float dvdy;
-}; 
-#endif
-
-#if PJD_DEBUG_VIEW_ENABLED
-#define DEBUG_VIEW_ONLY_ARG(...) ,__VA_ARGS__
-#else
-#define DEBUG_VIEW_ONLY_ARG(...)
-#endif
-
-static PJD_INLINE Color ShadePixel(float mipLevel, const Interpolants* interp DEBUG_VIEW_ONLY_ARG(DebugParams params))
+static PJD_INLINE rgba8 ShadePixel(float mipLevel, const Interpolants* interp DEBUG_VIEW_ONLY_ARG(DebugParams params))
 {
 #if PJD_DEBUG_VIEW_ENABLED
     switch (Ctx.DebugMode)
@@ -189,7 +164,7 @@ static PJD_INLINE Color ShadePixel(float mipLevel, const Interpolants* interp DE
     }
 #endif
 
-    return SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
+    return Ctx.PixelShader(mipLevel, interp);
 }
 
 template<bool EdgeTest>

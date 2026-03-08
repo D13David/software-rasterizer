@@ -25,12 +25,18 @@ struct SubMesh {
 
 std::vector<SubMesh> submeshes;
 vec3 PlayerPos;
-float Yaw;
+float Yaw = DEG2RAD(90.0f);
 float Pitch;
 mat4 WorldViewProj;
 
 float MouseSensitivity = 0.0025f;
 float MoveSpeed = 200.0f;
+
+static rgba8 ShadePixel(float mipLevel, const Interpolants* interp)
+{
+    rgba8 color = SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
+    return color;
+}
 
 bool SceneInitialize()
 {
@@ -125,7 +131,6 @@ static void HandleInput()
     Pitch += mouseDelta[1] * MouseSensitivity;
     Pitch  = Clamp(Pitch, -1.5f, 1.5f);
 #else
-    Yaw = DEG2RAD(90);
     PlayerPos[1] = 100;
 #endif
 
@@ -192,6 +197,7 @@ void SceneRenderFrame()
 
     SetTextureFilter(TextureFilter::Unreal);
     SetDrawMode(DrawMode::Solid);
+    SetPixelShader(ShadePixel);
 
     InputElementDescriptor VertexLayout[] = {
         { InputElementType::Position, 0,  InputElementFormat::FLOAT3, 0, offsetof(Vertex, pos) },

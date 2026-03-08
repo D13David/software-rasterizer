@@ -28,7 +28,7 @@ static void NextState()
     ResolveFrameBuffer();
 }
 
-static Color RandColor()
+static rgba8 RandColor()
 {
     return RGB(RandomRange(0, 255), RandomRange(0, 255), RandomRange(0, 255));
 }
@@ -85,7 +85,7 @@ static bool LineStylePlay()
 
 static bool RandBarPlay()
 {
-    Color color = RandColor();
+    rgba8 color = RandColor();
     int x = RandomRange(0, FB_WIDTH - 1);
     int y = RandomRange(0, FB_WIDTH - 1);
     DrawRectangle(x, y, RandomRange(0, FB_WIDTH - 1) - x, RandomRange(0, FB_HEIGHT - 1) - y, 

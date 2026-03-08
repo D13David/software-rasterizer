@@ -13,4 +13,7 @@ typedef PJD_ALIGN(16) float vec4[4];
 typedef vec3                mat3[3];
 typedef PJD_ALIGN(16) vec4  mat4[4];
 
+typedef uint32_t            rgba8;
+typedef float               color4[4];
+
 #endif // PJD_MATHLIB_TYPES_H

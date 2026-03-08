@@ -57,6 +57,7 @@ typedef struct RasterContext
         void* CB;
         void* DB;
     } Out;
+    PS              PixelShader;
     TextureFilter   Filter;
     TextureView     Texture;
     DrawMode        DrawMode;
@@ -89,6 +90,22 @@ typedef struct VertexTransformCommand
     int                 NumInputElements;
     mat4                ProjectionMatrix;
 } VertexTransformCommand;
+
+#if PJD_DEBUG_VIEW_ENABLED
+typedef struct DebugParams
+{
+    float dudx;
+    float dudy;
+    float dvdx;
+    float dvdy;
+};
+#endif
+
+#if PJD_DEBUG_VIEW_ENABLED
+#define DEBUG_VIEW_ONLY_ARG(...) ,__VA_ARGS__
+#else
+#define DEBUG_VIEW_ONLY_ARG(...)
+#endif
 
 extern struct ThreadPool*    ThreadPool;
 extern RasterContext         Ctx;
@@ -124,9 +141,9 @@ static PJD_INLINE void ComputeAABB(int x0, int y0, int x1, int y1, int x2, int y
     out[3] = ymax;
 }
 
-void WriteFramebufferDirect(int offset, Color color);
+void WriteFramebufferDirect(int offset, rgba8 color);
 
-Color SampleTextureLod(int sx, int sy, float u, float v, float mipLevel);
+rgba8 SampleTextureLod(int sx, int sy, float u, float v, float mipLevel);
 
 void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransformCommand* command);
 void RunTriangleBinning(bool parallelize);
@@ -135,5 +152,10 @@ void RunRasterizeTriangles(bool parallelize);
 #if DEBUG_TILE_CLASSIFICATION
 void DebugViewTileCoverage();
 #endif // DEBUG_TILE_CLASSIFICATION
+
+static rgba8 ShadePixelDefault(float mipLevel, const Interpolants* interp)
+{
+    return SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
+}
 
 #endif // PJD_RASTER_INTERNAL_H

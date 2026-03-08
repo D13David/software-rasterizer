@@ -31,6 +31,8 @@ void RasterizerInitialize(const RasterizerDesc& init)
     Ctx.DebugMode = DM_None;
 #endif
 
+    Ctx.PixelShader = &ShadePixelDefault;
+
     SYSTEM_INFO systemInfo;
     GetSystemInfo(&systemInfo);
 #if 0
@@ -93,13 +95,18 @@ void SetDebugMode(DebugMode mode)
 }
 #endif
 
-void Clear(Color color)
+void SetPixelShader(PS shader)
+{
+    Ctx.PixelShader = shader;
+}
+
+void Clear(rgba8 color)
 {
     PROFILE_AUTO("Frame Buffer Clear");
 
     int bufferSize = FB_WIDTH * FB_HEIGHT;
 
-    Color* colorBuffer = (Color*)ColorBuffer[Frame];
+    rgba8* colorBuffer = (rgba8*)ColorBuffer[Frame];
 
     for (int i = 0; i < bufferSize; ++i) {
         colorBuffer[i] = color;
@@ -111,13 +118,13 @@ void Clear(Color color)
     }
 }
 
-void WriteFramebufferDirect(int offset, Color color)
+void WriteFramebufferDirect(int offset, rgba8 color)
 {
     assert(offset < FB_WIDTH * FB_HEIGHT);
-    ((Color*)ColorBuffer[Frame])[offset] = color;
+    ((rgba8*)ColorBuffer[Frame])[offset] = color;
 }
 
-void DrawPixel(int x, int y, Color color)
+void DrawPixel(int x, int y, rgba8 color)
 {
     assert(x < FB_WIDTH && y < FB_HEIGHT);
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT
@@ -130,13 +137,13 @@ void DrawPixel(int x, int y, Color color)
     WriteFramebufferDirect(offset, color);
 }
 
-void DrawPixelToScreen(int x, int y, Color color)
+void DrawPixelToScreen(int x, int y, rgba8 color)
 {
     assert(x < FB_WIDTH && y < FB_HEIGHT);
-    ((Color*)Ctx.Out.CB)[y*FB_WIDTH+x] = color;
+    ((rgba8*)Ctx.Out.CB)[y*FB_WIDTH+x] = color;
 }
 
-Color SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
+rgba8 SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
 {
     TextureView texture = Ctx.Texture;
 
@@ -165,11 +172,11 @@ Color SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
     int x = (int)(u * mipWidth);
     int y = (int)(v * mipHeight);
 
-    Color* mipData = (Color*)(((uint8_t*)texture.Data) + texture.MipOffsets[mip]);
+    rgba8* mipData = (rgba8*)(((uint8_t*)texture.Data) + texture.MipOffsets[mip]);
     return mipData[y * mipWidth + x];
 }
 
-static void RunDrawTrianglesWireframe(Color color)
+static void RunDrawTrianglesWireframe(rgba8 color)
 {
     int numVertices = (ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex));
     ExportVertex* vertexStart = (ExportVertex*)ExportBufferData(ExportBuffer);
@@ -215,7 +222,7 @@ static void ResolveTiledFrameBuffer(size_t id, int startTile, int endTile, void*
 {
     const int PixelsPerTile = TILE_WIDTH * TILE_HEIGHT;
 
-    Color* outCB = (Color*)Ctx.Out.CB;
+    rgba8* outCB = (rgba8*)Ctx.Out.CB;
     const uint32_t* TileBuffer = ColorBuffer[Frame] + startTile * PixelsPerTile;
 
     for (int tileIndex = startTile; tileIndex < endTile; ++tileIndex)
@@ -258,7 +265,7 @@ void ResolveFrameBuffer()
     }
 #endif
 
-    Color* outCB = (Color*)Ctx.Out.CB;
+    rgba8* outCB = (rgba8*)Ctx.Out.CB;
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT
     ParallelFor(ThreadPool, 0, TILE_COUNT_X*TILE_COUNT_Y, 8, ResolveTiledFrameBuffer, NULL);
 #elif ENABLE_CHECKERBOARD_RENDERING

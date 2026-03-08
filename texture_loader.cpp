@@ -158,7 +158,7 @@ static uint32_t ComputeMipMapSize(uint32_t width, uint32_t height, uint32_t bpp,
     return size;
 }
 
-static Color mipLevelDebugValues[20] = {
+static rgba8 mipLevelDebugValues[20] = {
     COLOR(1.00, 0.00, 0.00),  // Red
     COLOR(0.00, 1.00, 0.00),  // Green
     COLOR(0.00, 0.00, 1.00),  // Blue
@@ -209,7 +209,7 @@ static void GenerateMipMaps(uint8_t* data, TextureView& texture)
 #define DEBUG_MIPMAPS 0
 #if DEBUG_MIPMAPS
         for (int i = 0; i < (w / 2 * h / 2); ++i) {
-            ((Color*)nextMipMap)[i] = mipLevelDebugValues[level];
+            ((rgba8*)nextMipMap)[i] = mipLevelDebugValues[level];
         }
 #else
         stbir_resize(prevMipMap, w, h, 0, nextMipMap, w / 2, h / 2, 0, STBIR_RGBA, STBIR_TYPE_UINT8, STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT);
@@ -227,7 +227,7 @@ static void GenerateMipMaps(uint8_t* data, TextureView& texture)
 
 static bool GenerateCheckerboardTexture(TextureView* texture, int width, int height, int checkSize)
 {
-    Color* buffer = (Color*)malloc(width * height * sizeof(Color));
+    rgba8* buffer = (rgba8*)malloc(width * height * sizeof(rgba8));
     if (!buffer) {
         return false;
     }
@@ -263,14 +263,14 @@ TextureView LoadCheckerboardTexture()
     return GCheckerBoardTexture;
 }
 
-TextureView LoadColorTexture(Color color)
+TextureView LoadColorTexture(rgba8 color)
 {
     TextureView result = {
         .Width = 32,
         .Height = 32
     };
 
-    Color* buffer = (Color*)malloc(result.Width * result.Height * sizeof(Color));
+    rgba8* buffer = (rgba8*)malloc(result.Width * result.Height * sizeof(rgba8));
     if (!buffer) {
         return GNullTexture;
     }

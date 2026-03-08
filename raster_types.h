@@ -3,9 +3,6 @@
 
 #include "common.h"
 
-typedef uint32_t    Color;
-typedef float       Colorf;
-
 typedef struct ModeDesc
 {
     uint32_t    Width;
@@ -32,7 +29,7 @@ typedef enum class InputElementType
     Position,
     Texcoord,
     Normal,
-    Color,
+    rgba8,
 } InputElementType;
 
 typedef struct InputElementDescriptor
@@ -66,5 +63,14 @@ enum DrawMode
     Solid,
     Wireframe
 };
+
+typedef struct Interpolants
+{
+    int     cx0, cx1, cx2;
+    float   z, u, v;
+    int     px, py;
+} Interpolants;
+
+#define I(idx, attr) interpolants[idx].attr
 
 #endif // PJD_RASTER_TYPES_H

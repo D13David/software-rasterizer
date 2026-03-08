@@ -4,7 +4,7 @@
 #include "raster_common.h"
 
 TextureView LoadCheckerboardTexture();
-TextureView LoadColorTexture(Color color);
+TextureView LoadColorTexture(rgba8 color);
 TextureView LoadTexture(const char* path);
 void FreeTexture(TextureView texture);
 
