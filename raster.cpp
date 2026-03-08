@@ -290,3 +290,8 @@ void ResolveFrameBuffer()
     memcpy(outCB, ColorBuffer[Frame], FB_WIDTH * FB_HEIGHT * sizeof(uint32_t));
 #endif
 }
+
+void SaveScreenshot(const char* filename)
+{
+    WriteToTgaFile(filename, FB_WIDTH, FB_HEIGHT, (uint8_t*)Ctx.Out.CB);
+}

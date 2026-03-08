@@ -6,7 +6,7 @@
 #define TEST_SCENE_SPONZA   3
 
 // change this to change scene
-#define PJD_ACTIVE_SCENE TEST_SCENE_SPONZA
+#define PJD_ACTIVE_SCENE TEST_SCENE_UNREAL
 
 #if __cplusplus
 extern "C" {

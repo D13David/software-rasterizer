@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <shlobj.h>
 #include <stdint.h>
 #include <math.h>
 #include <assert.h>
@@ -13,6 +14,7 @@
 #include "render_stats.h"
 #include "shared.h"
 #include "raster.h"
+#include "texture_loader.h"
 
 #define FPS_METER_WIDTH 200
 #define FPS_METER_HEIGHT 70
@@ -28,6 +30,9 @@ float DeltaTime;
 static bool ShowHelp = false;
 static bool ShowPerformanceMetrics = true;
 static DWORD LastTime;
+static char ApplicationDataPath[MAX_PATH];
+
+static void CaptureScreenshot();
 
 typedef struct Command
 {
@@ -48,6 +53,7 @@ static Command Commands[] =
     { '3',   "Show Tile Classification", []() { SetDebugMode(DM_TileClassification); } },
     { '4',   "Show Depth",               []() { SetDebugMode(DM_DepthBuffer); } },
 #endif
+    { VK_F11,"Save Screenshot",          []() { CaptureScreenshot(); } },
     { 0, 0 }
 };
 
@@ -67,6 +73,14 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
     Thirteen::SetVSync(false);
 
     ProfilerInitialize();
+
+    if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, ApplicationDataPath)))
+    {
+        strcat_s(ApplicationDataPath, "/SoftwareRasterizer");
+        if (!CreateDirectoryA(ApplicationDataPath, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
+            return 0;
+        }
+    }
 
     float* depthBuffer = (float*)_aligned_malloc(FB_WIDTH * FB_HEIGHT * sizeof(float), 32);
 
@@ -159,4 +173,20 @@ exit:
     Thirteen::Shutdown();
 
     return 0;
+}
+
+static void CaptureScreenshot()
+{
+    char filename[MAX_PATH];
+
+    for (int i = 0; ; ++i)
+    {
+        sprintf_s(filename, "%s/Screenshot_%d.tga", ApplicationDataPath, i);
+        DWORD attribs = GetFileAttributesA(filename);
+        if (attribs == INVALID_FILE_ATTRIBUTES) {
+            break;
+        }
+    }
+
+    SaveScreenshot(filename);
 }

@@ -114,7 +114,7 @@ cleanup:
     return result;
 }
 
-static void WriteToTgaFile(const char* filename, uint32_t width, uint32_t height, uint8_t* dataBGRA, uint8_t dataChannels = 4, uint8_t fileChannels = 3)
+void WriteToTgaFile(const char* filename, uint32_t width, uint32_t height, uint8_t* dataRGRA, uint8_t dataChannels /*= 4*/, uint8_t fileChannels /*= 3*/)
 {
     FILE* fp = NULL;
     fopen_s(&fp, filename, "wb");
@@ -125,9 +125,12 @@ static void WriteToTgaFile(const char* filename, uint32_t width, uint32_t height
 
     for (uint32_t i = 0; i < width * height; i++)
     {
+        uint8_t pixel[4];
+        memcpy(pixel, &dataRGRA[i * dataChannels], dataChannels);
+        uint8_t tmp = pixel[0]; pixel[0] = pixel[2]; pixel[2] = tmp;
         for (uint32_t b = 0; b < fileChannels; b++)
         {
-            fputc(dataBGRA[(i * dataChannels) + (b % dataChannels)], fp);
+            fputc(pixel[b % dataChannels], fp);
         }
     }
     fclose(fp);

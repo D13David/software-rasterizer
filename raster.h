@@ -36,6 +36,8 @@ void DrawPixelToScreen(int x, int y, rgba8 color);
 void DrawTriangleList(const void* data, const uint32_t* indices, const InputElementDescriptor* elements, int numInputElements, int numPrimitives, mat4 proj, bool parallel);
 void ResolveFrameBuffer();
 
+void SaveScreenshot(const char* filename);
+
 /*----------------------------------------------------------------------------
     Shader API
 ----------------------------------------------------------------------------*/
