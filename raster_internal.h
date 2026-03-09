@@ -72,14 +72,15 @@ typedef struct ScreenTile
     PJD_ALIGN(64) AtomicInt NumTriangles;
 } ScreenTile;
 
-typedef struct ExportVertex
+typedef struct PJD_ALIGN(64) ExportVertex
 {
-    int   ScreenX;
-    int   ScreenY;
-    float InvW;             // 1 / w
-    float Z;                // z
-    float UOverW;           // u / w
-    float VOverW;           // v / w
+    uint16_t ScreenX, ScreenY; //           4 byte
+    float Z;                   // z         4 byte
+    float InvW;                // 1 / w     4 byte
+    float UOverW;              // u / w     4 byte
+    float VOverW;              // v / w     4 byte
+    vec4  Color;               // rgbX     12 byte
+    vec4  Normal;              // xyzX     12 byte
 } ExportVertex;
 
 typedef struct VertexTransformCommand

@@ -33,10 +33,34 @@ int centerX, centerY;
 float MouseSensitivity = 0.0025f;
 float MoveSpeed = 200.0f;
 
+vec3 SunLightDir;
+
+void aces_filmic(float* color) 
+{
+    for (int c = 0; c < 3; ++c) 
+    {
+        float x = color[c] * 0.6f;
+        color[c] = (x * (2.51f * x + 0.03f)) / (x * (2.43f * x + 0.59f) + 0.14f);
+        color[c] = Clamp(color[c], 0, 1);
+    }
+}
+
 static rgba8 ShadePixel(float mipLevel, const Interpolants* interp)
 {
-    rgba8 color = SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
-    return color;
+    color4 texColor;
+
+    ConvertRGBA8(SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel), texColor);
+
+    vec3 normal{ interp->nx, interp->ny, interp->nz };
+
+    float diffuse = max(Vec3Dot(SunLightDir, normal), 0.1f) * 2.5;
+
+    color4 litColor;
+    Color4Mul(texColor, diffuse, litColor);
+
+    aces_filmic(litColor);
+
+    return ConvertColor4(litColor);
 }
 
 bool SceneInitialize()
@@ -212,6 +236,23 @@ void SceneRenderFrame()
 {
     HandleInput();
 
+#if 0
+    static float timeOfDay = 0.0f;
+    timeOfDay += 0.06f * DeltaTime;
+    if (timeOfDay > 1.0f)
+        timeOfDay -= 1.0f;
+    float sunAngle = timeOfDay * 2.0f * 3.14159265f; // full rotation in radians
+
+    // Assuming sun moves along X-Z plane (horizon rotation)
+    SunLightDir[0] = cos(sunAngle);
+    SunLightDir[1] = sin(sunAngle); // vertical movement
+    SunLightDir[2] = 0.0f;
+#else
+    SunLightDir[0] = -0.4f;
+    SunLightDir[1] =  0.9f;
+    SunLightDir[2] = 0.0f;
+#endif
+
     Clear(RGB(0, 0, 0));
 
     SetTextureFilter(TextureFilter::Unreal);
@@ -246,6 +287,7 @@ void SceneRenderFrame()
 void SceneRenderOverlay2D()
 {
     //WriteString(Format("Player Pos: %f, %f, %f", PlayerPos[0], PlayerPos[1], PlayerPos[2]), 10, 500);
+    //WriteString(Format("Light Dir: %f, %f, %f", SunLightDir[0], SunLightDir[1], SunLightDir[2]), 10, 500);
 }
 
 #endif // TEST_SCENE_EMPTY

@@ -243,10 +243,19 @@ static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const Expor
                 I(i,px) = x + (i & 1);
                 I(i,py) = y + (i >> 1);
 
-                float depth = 1.0f / (w0 * v0->InvW + w1 * v1->InvW + w2 * v2->InvW);
                 I(i,z)      = (w0 * v0->Z + w1 * v1->Z + w2 * v2->Z);
+
+                float depth = 1.0f / (w0 * v0->InvW + w1 * v1->InvW + w2 * v2->InvW);
                 I(i,u)      = (w0 * v0->UOverW + w1 * v1->UOverW + w2 * v2->UOverW) * depth;
                 I(i,v)      = (w0 * v0->VOverW + w1 * v1->VOverW + w2 * v2->VOverW) * depth;
+
+                I(i, nx)    = (w0 * v0->Normal[0] + w1 * v1->Normal[0] + w2 * v2->Normal[0]);
+                I(i, ny)    = (w0 * v0->Normal[1] + w1 * v1->Normal[1] + w2 * v2->Normal[1]);
+                I(i, nz)    = (w0 * v0->Normal[2] + w1 * v1->Normal[2] + w2 * v2->Normal[2]);
+
+                I(i, r)     = (w0 * v0->Color[0] + w1 * v1->Color[0] + w2 * v2->Color[0]);
+                I(i, g)     = (w0 * v0->Color[1] + w1 * v1->Color[1] + w2 * v2->Color[1]);
+                I(i, b)     = (w0 * v0->Color[2] + w1 * v1->Color[2] + w2 * v2->Color[2]);
             }
 
             // calculate u/v derivatives and mip-level

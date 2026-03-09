@@ -29,7 +29,7 @@ typedef enum class InputElementType
     Position,
     Texcoord,
     Normal,
-    rgba8,
+    Color,
 } InputElementType;
 
 typedef struct InputElementDescriptor
@@ -66,9 +66,11 @@ enum DrawMode
 
 typedef struct Interpolants
 {
-    int     cx0, cx1, cx2;
-    float   z, u, v;
-    int     px, py;
+    int cx0, cx1, cx2;
+    uint16_t px, py;
+    float   z, u, v; 
+    float   nx, ny, nz;
+    float   r, g, b;
 } Interpolants;
 
 #define I(idx, attr) interpolants[idx].attr

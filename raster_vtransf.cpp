@@ -10,6 +10,8 @@ typedef struct ClipVertex
 {
     vec4    ClipSpacePos;
     vec2    TexCoords;
+    vec3    Color;
+    vec3    Normal;
 } ClipVertex;
 
 ExportBufferHandle ExportBuffer;
@@ -32,6 +34,8 @@ static PJD_INLINE ClipVertex Clip(const ClipVertex* v0, const ClipVertex* v1, fl
     float alpha = dot0 / (dot0 - dot1);
     LerpVec4(v0->ClipSpacePos, v1->ClipSpacePos, alpha, out.ClipSpacePos);
     LerpVec2(v0->TexCoords, v1->TexCoords, alpha, out.TexCoords);
+    LerpVec3(v0->Color, v1->Color, alpha, out.Color);
+    LerpVec3(v0->Normal, v1->Normal, alpha, out.Normal);
     return out;
 }
 
@@ -113,6 +117,10 @@ static int ClipTriangleAgainstFrustum(ClipVertex verts[3], uint8_t m0, uint8_t m
     return count;
 }
 
+static vec2 TexCoordDefault = { 0, 0 };
+static vec3 ColorDefault = { 0, 0, 0 };
+static vec3 NormalDefault = { 0, 0, 0 };
+
 static void RunVertexTransform_(size_t id, int start, int end, void* context)
 {
     // setup vertex attribute streams
@@ -123,7 +131,8 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
     assert(inputElementPosition != NULL);
 
     const InputElementDescriptor* inputElementTexcoord = InputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::Texcoord);
-    assert(inputElementTexcoord != NULL);
+    const InputElementDescriptor* inputElementColor    = InputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::Color);
+    const InputElementDescriptor* inputElementNormal   = InputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::Normal);
 
     int index = start;
     int allocationHint = 0;
@@ -144,11 +153,6 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
             float* pos1 = (float*)InputStreamElementPtr(command->Data, inputElementPosition, stride, command->Indices[index * 3 + 1]);
             float* pos2 = (float*)InputStreamElementPtr(command->Data, inputElementPosition, stride, command->Indices[index * 3 + 2]);
 
-            float* tex[3];
-            tex[0] = (float*)InputStreamElementPtr(command->Data, inputElementTexcoord, stride, command->Indices[index * 3 + 0]);
-            tex[1] = (float*)InputStreamElementPtr(command->Data, inputElementTexcoord, stride, command->Indices[index * 3 + 1]);
-            tex[2] = (float*)InputStreamElementPtr(command->Data, inputElementTexcoord, stride, command->Indices[index * 3 + 2]);
-
             vec4 pos[3];
             Matrix4MulVec3(command->ProjectionMatrix, pos0, 1, pos[0]);
             Matrix4MulVec3(command->ProjectionMatrix, pos1, 1, pos[1]);
@@ -166,6 +170,26 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
                 memset(exportVertexPtr, 0, sizeof(ExportVertex) * 3);
                 exportVertexPtr += 3;
                 continue;
+            }
+
+            float *tex[3]  = { TexCoordDefault, TexCoordDefault, TexCoordDefault },
+                  *col[3]  = { ColorDefault, ColorDefault, ColorDefault },
+                  *norm[3] = { NormalDefault, NormalDefault, NormalDefault };
+
+            if (inputElementTexcoord) {
+                tex[0] = (float*)InputStreamElementPtr(command->Data, inputElementTexcoord, stride, command->Indices[index * 3 + 0]);
+                tex[1] = (float*)InputStreamElementPtr(command->Data, inputElementTexcoord, stride, command->Indices[index * 3 + 1]);
+                tex[2] = (float*)InputStreamElementPtr(command->Data, inputElementTexcoord, stride, command->Indices[index * 3 + 2]);
+            }
+            if (inputElementColor) {
+                col[0] = (float*)InputStreamElementPtr(command->Data, inputElementColor, stride, command->Indices[index * 3 + 0]);
+                col[1] = (float*)InputStreamElementPtr(command->Data, inputElementColor, stride, command->Indices[index * 3 + 1]);
+                col[2] = (float*)InputStreamElementPtr(command->Data, inputElementColor, stride, command->Indices[index * 3 + 2]);
+            }
+            if (inputElementNormal) {
+                norm[0] = (float*)InputStreamElementPtr(command->Data, inputElementNormal, stride, command->Indices[index * 3 + 0]);
+                norm[1] = (float*)InputStreamElementPtr(command->Data, inputElementNormal, stride, command->Indices[index * 3 + 1]);
+                norm[2] = (float*)InputStreamElementPtr(command->Data, inputElementNormal, stride, command->Indices[index * 3 + 2]);
             }
 
             ClipVertex input[3], clipped[12];
@@ -190,6 +214,8 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
                 {
                     Vec4Copy(pos[i], input[i].ClipSpacePos);
                     Vec2Copy(tex[i], input[i].TexCoords);
+                    Vec3Copy(col[i], input[i].Color);
+                    Vec3Copy(norm[i], input[i].Normal);
                 }
 
                 numClippedVertices = ClipTriangleAgainstFrustum(input, out0, out1, out2, clipped);
@@ -201,6 +227,8 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
                 {
                     Vec4Copy(pos[i], clipped[i].ClipSpacePos);
                     Vec2Copy(tex[i], clipped[i].TexCoords);
+                    Vec3Copy(col[i], clipped[i].Color);
+                    Vec3Copy(norm[i], clipped[i].Normal);
                 }
                 numClippedVertices = 3;
             }
@@ -224,6 +252,8 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
         exportVertexPtr[(idx)].Z       = vert.ClipSpacePos[2];          \
         exportVertexPtr[(idx)].UOverW  = vert.TexCoords[0] * invW;      \
         exportVertexPtr[(idx)].VOverW  = vert.TexCoords[1] * invW;      \
+        Vec3Copy(vert.Color, exportVertexPtr[(idx)].Color);             \
+        Vec3Copy(vert.Normal, exportVertexPtr[(idx)].Normal);           \
     } while (0)
 
                 EXPORT_VERTEX(0, v0);

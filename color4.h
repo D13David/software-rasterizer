@@ -39,6 +39,22 @@ PJD_INLINE rgba8 ConvertColor4(color4 c)
     return RGBA_PACK(c[0] * 255, c[1] * 255, c[2] * 255, c[3] * 255);
 }
 
+PJD_INLINE void Color4Add(color4 a, color4 b, color4 out)
+{
+    out[0] = a[0] * b[0];
+    out[1] = a[1] * b[1];
+    out[2] = a[2] * b[2];
+    out[3] = a[3] * b[3];
+}
+
+PJD_INLINE void Color4Mul(color4 c, float s, color4 out)
+{
+    out[0] = c[0] * s;
+    out[1] = c[1] * s;
+    out[2] = c[2] * s;
+    out[3] = c[3] * s;
+}
+
 PJD_INLINE rgba8 InvertRGBA8(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
     return RGBA_PACK(255 - r, 255 - g, 255 - b, a);

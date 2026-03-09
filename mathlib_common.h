@@ -69,6 +69,11 @@ PJD_INLINE void Vec2Copy(const vec2 src, vec2 dst)
     memcpy(dst, src, sizeof(vec2));
 }
 
+PJD_INLINE void Vec3Copy(const vec3 src, vec3 dst)
+{
+    memcpy(dst, src, sizeof(vec3));
+}
+
 PJD_INLINE void Vec4Copy(const vec4 src, vec4 dst)
 {
     memcpy(dst, src, sizeof(vec4));
