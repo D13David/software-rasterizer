@@ -94,6 +94,9 @@
     <ClCompile Include="input_stream.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
+    <ClCompile Include="test_scene_tr3.cpp">
+      <Filter>Source Files\test_scenes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="raster.h">

@@ -4,9 +4,10 @@
 #define TEST_SCENE_UNREAL   1
 #define TEST_SCENE_2D       2
 #define TEST_SCENE_SPONZA   3
+#define TEST_SCENE_TR3      4
 
 // change this to change scene
-#define PJD_ACTIVE_SCENE TEST_SCENE_SPONZA
+#define PJD_ACTIVE_SCENE TEST_SCENE_TR3
 
 #if __cplusplus
 extern "C" {

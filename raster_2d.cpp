@@ -314,7 +314,7 @@ void DrawLine(int x0, int y0, int x1, int y1, rgba8 color, uint8_t thickness /*=
             if ((mask >> (15 - maskIndex)) & 1)
             {
                 for (int offset = -range; offset <= range; ++offset) {
-                    DrawPixelToScreen(x0, y0 + offset, color);
+                    DrawPixelToScreenSafe(x0, y0 + offset, color);
                 }
             }
 
@@ -338,7 +338,7 @@ void DrawLine(int x0, int y0, int x1, int y1, rgba8 color, uint8_t thickness /*=
             if ((mask >> (15 - maskIndex)) & 1)
             {
                 for (int offset = -range; offset <= range; ++offset) {
-                    DrawPixelToScreen(x0 + offset, y0, color);
+                    DrawPixelToScreenSafe(x0 + offset, y0, color);
                 }
             }
 

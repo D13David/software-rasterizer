@@ -38,6 +38,12 @@
 #define CONCAT_(a, b) a##b
 #define CONCAT(a, b) CONCAT_(a, b)
 
+#define CHECKED(expr) do {  \
+        if (!(expr)) {      \
+            assert(false && "FAILED: " #expr); \
+        }                   \
+    } while(0)
+
 template<typename F>
 struct Scoped { F f; ~Scoped() { f(); } };
 

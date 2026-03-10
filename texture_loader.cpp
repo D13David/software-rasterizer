@@ -136,16 +136,6 @@ void WriteToTgaFile(const char* filename, uint32_t width, uint32_t height, uint8
     fclose(fp);
 }
 
-static void ConvertBGRAToRGBA(uint32_t* data, int length)
-{
-    for (int i = 0; i < length; ++i)
-    {
-        data[i] = (data[i] & 0xFF00FF00) |
-            ((data[i] & 0x00FF0000) >> 16) |
-            ((data[i] & 0x000000FF) << 16);
-    }
-}
-
 static uint32_t ComputeMipMapSize(uint32_t width, uint32_t height, uint32_t bpp, uint32_t minDimension, size_t* maxLevels)
 {
     uint32_t size = 0;
@@ -289,6 +279,18 @@ TextureView LoadColorTexture(rgba8 color)
     return result;
 }
 
+TextureView LoadTextureFromMemory(void* buffer, int width, int height)
+{
+    TextureView result = {
+        .Width = width,
+        .Height = height,
+    };
+
+    GenerateMipMaps((uint8_t*)buffer, result);
+
+    return result;
+}
+
 TextureView LoadTexture(const char* path)
 {
     // TODO: add some proper resource management here
@@ -300,14 +302,7 @@ TextureView LoadTexture(const char* path)
         return GNullTexture;
     }
 
-    ConvertBGRAToRGBA((uint32_t*)loadingBuffer, width * height);
-
-    TextureView result = {
-        .Width = width,
-        .Height = height,
-    };
-
-    GenerateMipMaps((uint8_t*)loadingBuffer, result);
+    TextureView result = LoadTextureFromMemory(loadingBuffer, width, height);
 
     free(loadingBuffer);
 

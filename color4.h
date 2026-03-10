@@ -4,16 +4,16 @@
 #include "mathlib_common.h"
 
 #define RGBA_UNPACK(c, r, g, b, a)        \
-        uint8_t (r) = (c >>  0) & 0xff;   \
+        uint8_t (b) = (c >>  0) & 0xff;   \
         uint8_t (g) = (c >>  8) & 0xff;   \
-        uint8_t (b) = (c >> 16) & 0xff;   \
+        uint8_t (r) = (c >> 16) & 0xff;   \
         uint8_t (a) = (c >> 24) & 0xff;
 
 #define RGBA_PACK(r, g, b, a) \
     (((uint32_t)(a) << 24) |  \
-     ((uint32_t)(b) << 16) |  \
+     ((uint32_t)(r) << 16) |  \
      ((uint32_t)(g) << 8)  |  \
-     ((uint32_t)(r)) )
+     ((uint32_t)(b)) )
 
 #define RGBA(r, g, b, a) RGBA_PACK(r, g, b, a)
 #define COLOR(r, g, b) ConvertColor4(r, g, b, 1)
@@ -41,10 +41,28 @@ PJD_INLINE rgba8 ConvertColor4(color4 c)
 
 PJD_INLINE void Color4Add(color4 a, color4 b, color4 out)
 {
+    out[0] = a[0] + b[0];
+    out[1] = a[1] + b[1];
+    out[2] = a[2] + b[2];
+    out[3] = a[3] + b[3];
+}
+
+PJD_INLINE void Color4Mul(color4 a, color4 b, color4 out)
+{
     out[0] = a[0] * b[0];
     out[1] = a[1] * b[1];
     out[2] = a[2] * b[2];
     out[3] = a[3] * b[3];
+}
+
+PJD_INLINE rgba8 RGBA8Mul(rgba8 c1, rgba8 c2)
+{
+    uint8_t a = ((c1 >> 24) * (c2 >> 24) + 127) / 255;
+    uint8_t r = (((c1 >> 16) & 0xFF) * ((c2 >> 16) & 0xFF) + 127) / 255;
+    uint8_t g = (((c1 >> 8) & 0xFF) * ((c2 >> 8) & 0xFF) + 127) / 255;
+    uint8_t b = ((c1 & 0xFF) * (c2 & 0xFF) + 127) / 255;
+
+    return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
 PJD_INLINE void Color4Mul(color4 c, float s, color4 out)
@@ -53,6 +71,14 @@ PJD_INLINE void Color4Mul(color4 c, float s, color4 out)
     out[1] = c[1] * s;
     out[2] = c[2] * s;
     out[3] = c[3] * s;
+}
+
+PJD_INLINE void Color4SaturateSelf(color4 c)
+{
+    c[0] = Saturate(c[0]);
+    c[1] = Saturate(c[1]);
+    c[2] = Saturate(c[2]);
+    c[3] = Saturate(c[3]);
 }
 
 PJD_INLINE rgba8 InvertRGBA8(uint8_t r, uint8_t g, uint8_t b, uint8_t a)

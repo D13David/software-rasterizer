@@ -206,6 +206,7 @@
     <ClCompile Include="test_scene_2d.cpp" />
     <ClCompile Include="test_scene_empty.cpp" />
     <ClCompile Include="test_scene_sponza.cpp" />
+    <ClCompile Include="test_scene_tr3.cpp" />
     <ClCompile Include="test_scene_unreal.cpp" />
     <ClCompile Include="texture_loader.cpp" />
     <ClCompile Include="thread_pool.cpp" />
