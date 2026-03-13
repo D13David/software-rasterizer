@@ -86,7 +86,7 @@ static int          centerY;
 static bool         LightmapsOnly;
 
 const float         MouseSensitivity = 0.0025f;
-const float         MoveSpeed = 5.0f;
+const float         MoveSpeed = 10.0f;
 const float         WorldScale = 200.0f;
 
 InputElementDescriptor VertexLayout[] = {
@@ -146,7 +146,7 @@ static void LoadTextureAtlases(FILE* fp)
             *dst++ = RGBA_PACK(
                 ((page16bit[j] & 0x7c00) >> 10) << 3,
                 ((page16bit[j] & 0x03e0) >>  5) << 3,
-                ((page16bit[j] & 0x001f) << 3),
+                ((page16bit[j] & 0x001f)      ) << 3,
                 ((page16bit[j] & 0x8000) <<  8)
             );
         }
@@ -355,7 +355,7 @@ static void FillRoomDrawInfo(const Tr3Room* room, RoomDrawInfo* info)
     info->Tris = (Tr3TriFace*)data;
 }
 
-static void BatchTri(int16_t* vbuf, uint16_t* ibuf, uint16_t worldX, uint16_t worldY, uint16_t worldZ, int16_t idx0, int16_t idx1, int16_t idx2, int16_t texId)
+static void BatchTri(int16_t* vbuf, uint16_t* ibuf, int32_t worldX, int32_t worldY, int32_t worldZ, int16_t idx0, int16_t idx1, int16_t idx2, int16_t texId)
 {
     Tr3Texture* texture = &Textures[texId];
     uint16_t texturePage = texture->Page;
@@ -441,7 +441,7 @@ static void HandleInput()
     vec3 tmp;
     MouseDelta(mouseDelta);
 
-#if 0
+#if 1
     Yaw -= mouseDelta[0] * MouseSensitivity;
     Pitch += mouseDelta[1] * MouseSensitivity;
     Pitch = Clamp(Pitch, -1.5f, 1.5f);
@@ -468,7 +468,7 @@ static void HandleInput()
 
     float speed = MoveSpeed;
     if (Thirteen::GetKey(VK_SPACE)) {
-        speed *= 25;
+        speed *= 10;
     }
 
     speed = speed * DeltaTime;
