@@ -373,6 +373,6 @@ static void RunRasterizeTriangles_(size_t id, int tileIndexStart, int tileIndexE
 void RunRasterizeTriangles(bool parallelize)
 {
     PROFILE_AUTO("Rasterize");
-    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, 64, &RunRasterizeTriangles_, NULL);
+    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, THREAD_GROUP_SIZE_RASTERIZE, &RunRasterizeTriangles_, NULL);
     else RunRasterizeTriangles_(0, 0, MAX_TILES, NULL);
 }

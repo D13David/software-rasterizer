@@ -42,7 +42,7 @@ void RasterizerInitialize(const RasterizerDesc& init)
 #endif
     ThreadPool = ThreadPoolInit(numThreads, 1024 * 32);
 
-    size_t regionSize = THREAD_GROUP_SIZE * sizeof(ExportVertex) * 15; // upper bound for clipped vertices per region
+    size_t regionSize = THREAD_GROUP_SIZE_VTRANSFORM * sizeof(ExportVertex) * 15; // upper bound for clipped vertices per region
     size_t maxRegions = (EXPORT_BUFFER_SIZE + regionSize - 1) / regionSize;
     ExportBuffer = ExportBufferCreate(EXPORT_BUFFER_SIZE, maxRegions);
 

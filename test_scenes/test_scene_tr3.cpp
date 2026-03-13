@@ -441,12 +441,16 @@ static void HandleInput()
     vec3 tmp;
     MouseDelta(mouseDelta);
 
-#if 1
+#if 0
     Yaw -= mouseDelta[0] * MouseSensitivity;
     Pitch += mouseDelta[1] * MouseSensitivity;
     Pitch = Clamp(Pitch, -1.5f, 1.5f);
 #else
-    PlayerPos[1] = 100;
+    PlayerPos[0] = 143.697220; 
+    PlayerPos[1] = -128.209290; 
+    PlayerPos[2] = 376.154755;
+    Yaw = 2.813297; 
+    Pitch = -0.045000;
 #endif
 
     vec3 forward = { cosf(Pitch) * sinf(Yaw),
@@ -578,7 +582,7 @@ void SceneRenderFrame()
             VertexLayoutCount,
             batch->NumIndices / 3,
             WorldViewProjection,
-            false
+            true
         );
     }
 }

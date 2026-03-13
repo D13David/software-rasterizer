@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
     <Filter Include="common">
       <UniqueIdentifier>{ef14c214-f67a-43b6-af43-c884db788bc3}</UniqueIdentifier>
     </Filter>
@@ -14,16 +10,20 @@
     <Filter Include="renderer">
       <UniqueIdentifier>{2014c06d-2690-4c21-96e3-d156da9aecab}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\test_scenes">
-      <UniqueIdentifier>{f7a503b5-540e-4303-b399-0064cf98c0ac}</UniqueIdentifier>
-    </Filter>
     <Filter Include="external">
       <UniqueIdentifier>{feb2a230-4912-4c7c-b186-909447501af0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="main">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="main\test_scenes">
+      <UniqueIdentifier>{f7a503b5-540e-4303-b399-0064cf98c0ac}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>main</Filter>
     </ClCompile>
     <ClCompile Include="common\export_buffer.cpp">
       <Filter>common</Filter>
@@ -71,27 +71,27 @@
       <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="test_scenes\test_scene_2d.cpp">
-      <Filter>Source Files\test_scenes</Filter>
+      <Filter>main\test_scenes</Filter>
     </ClCompile>
     <ClCompile Include="test_scenes\test_scene_empty.cpp">
-      <Filter>Source Files\test_scenes</Filter>
+      <Filter>main\test_scenes</Filter>
     </ClCompile>
     <ClCompile Include="test_scenes\test_scene_sponza.cpp">
-      <Filter>Source Files\test_scenes</Filter>
+      <Filter>main\test_scenes</Filter>
     </ClCompile>
     <ClCompile Include="test_scenes\test_scene_tr3.cpp">
-      <Filter>Source Files\test_scenes</Filter>
+      <Filter>main\test_scenes</Filter>
     </ClCompile>
     <ClCompile Include="test_scenes\test_scene_unreal.cpp">
-      <Filter>Source Files\test_scenes</Filter>
+      <Filter>main\test_scenes</Filter>
     </ClCompile>
     <ClCompile Include="test_scenes\uarch_loader.cpp">
-      <Filter>Source Files\test_scenes</Filter>
+      <Filter>main\test_scenes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shared.h">
-      <Filter>Source Files</Filter>
+      <Filter>main</Filter>
     </ClInclude>
     <ClInclude Include="external\fast_obj.h">
       <Filter>external</Filter>
@@ -172,7 +172,7 @@
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="test_scenes\uarch_loader.h">
-      <Filter>Source Files\test_scenes</Filter>
+      <Filter>main\test_scenes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

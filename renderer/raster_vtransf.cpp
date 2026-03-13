@@ -275,6 +275,6 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
 void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransformCommand* command)
 {
     PROFILE_AUTO("Vertex Transform");
-    if (parallelize) ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE, &RunVertexTransform_, command);
+    if (parallelize) ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE_VTRANSFORM, &RunVertexTransform_, command);
     else RunVertexTransform_(0, 0, numPrimitives, command);
 }

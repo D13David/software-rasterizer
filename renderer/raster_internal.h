@@ -9,7 +9,7 @@ using AtomicInt = std::atomic<int>;
 #define ENABLE_CHECKERBOARD_RENDERING 0
 
 // enable tiled framebuffer layout
-#define ENABLE_TILED_FRAMEBUFFER_LAYOUT 1
+#define ENABLE_TILED_FRAMEBUFFER_LAYOUT 0
 
 #if PJD_DEBUG_VIEW_ENABLED
     // enable for rendering color coded mip-map levels
@@ -45,9 +45,9 @@ using AtomicInt = std::atomic<int>;
 #define MAX_TRIS_PER_TILE   1024*128
 #define MAX_TILES           ((1920 / TILE_WIDTH) * (1080 / TILE_HEIGHT))
 
-#define THREAD_GROUP_SIZE_BINNING 32
-
-#define THREAD_GROUP_SIZE  128
+#define THREAD_GROUP_SIZE_BINNING      32
+#define THREAD_GROUP_SIZE_VTRANSFORM  128
+#define THREAD_GROUP_SIZE_RASTERIZE    16
 
 typedef struct RasterContext
 {
