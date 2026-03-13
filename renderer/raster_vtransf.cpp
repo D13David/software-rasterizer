@@ -1,10 +1,10 @@
 #include "raster.h"
 #include "raster_internal.h"
-#include "export_buffer.h"
+#include "common/export_buffer.h"
 #include "render_stats.h"
-#include "profile.h"
-#include "thread_pool.h"
-#include "parallel_for.h"
+#include "common/profile.h"
+#include "common/thread_pool.h"
+#include "common/parallel_for.h"
 
 typedef struct ClipVertex
 {
@@ -125,7 +125,7 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
 {
     // setup vertex attribute streams
     VertexTransformCommand* command = (VertexTransformCommand*)context;
-    int stride = InputStreamStride(command->Elements, command->NumInputElements);
+    size_t stride = InputStreamStride(command->Elements, command->NumInputElements);
 
     const InputElementDescriptor* inputElementPosition = InputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::Position);
     assert(inputElementPosition != NULL);

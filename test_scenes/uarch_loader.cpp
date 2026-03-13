@@ -1,7 +1,7 @@
 #include "uarch_loader.h"
-#include "common.h"
-#include "mesh.h"
-#include "mathlib.h"
+#include "common/common.h"
+#include "renderer/mesh.h"
+#include "math/mathlib.h"
 
 // Reference - https://web.archive.org/web/20130208140651/http://hyper.dnsalias.net/infobase/archive/unrealtech/Packages.htm
 //           - https://de.scribd.com/document/54572848/UT-Package-File-Format
@@ -191,8 +191,6 @@ ArchiveHandle OpenArchive(const char* filename)
 {
     FILE* fp = NULL;
     ArchiveHandle archive = NULL;
-    ExportEntry Export;
-    ImportEntry Import;
 
     if (fopen_s(&fp, filename, "rb") != 0) {
         goto error;
@@ -220,7 +218,7 @@ ArchiveHandle OpenArchive(const char* filename)
 
         fseek(fp, archive->Header.NameTable.Offset, SEEK_SET);
 
-        for (int i = 0; i < archive->Header.NameTable.Count; ++i)
+        for (uint32_t i = 0; i < archive->Header.NameTable.Count; ++i)
         {
             NameEntry* nameEntry = &archive->NameTable[i];
             ReadNameEntry(fp, nameEntry);
@@ -234,7 +232,7 @@ ArchiveHandle OpenArchive(const char* filename)
 
         fseek(fp, archive->Header.ImportTable.Offset, SEEK_SET);
 
-        for (int i = 0; i < archive->Header.ImportTable.Count; ++i)
+        for (uint32_t i = 0; i < archive->Header.ImportTable.Count; ++i)
         {
             ImportEntry* importEntry  = &archive->ImportTable[i];
             importEntry->ClassPackage = ReadCompactIndex(fp);
@@ -258,7 +256,7 @@ ArchiveHandle OpenArchive(const char* filename)
 
         fseek(fp, archive->Header.ExportTable.Offset, SEEK_SET);
 
-        for (int i = 0; i < archive->Header.ExportTable.Count; ++i)
+        for (uint32_t i = 0; i < archive->Header.ExportTable.Count; ++i)
         {
             ExportEntry* exportEntry  = &archive->ExportTable[i];
             exportEntry->ClassIndex   = ReadCompactIndex(fp);
@@ -540,7 +538,7 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
             *dst++ = *src++;
 
             uint32_t key = 0;
-            for (uint32_t k = 0; k < mapSize; ++k)
+            for (int k = 0; k < mapSize; ++k)
             {
                 if (map[k].used && map[k].value == newIndex)
                 {
@@ -562,7 +560,6 @@ int LoadMeshFromArchive(ArchiveHandle archive, const char* name, Mesh** outMesh)
 
     mesh->NumVertsPerFrame = newVertexCount;
 
-cleanup:
     free(vertexBuffer);
     free(map);
     free(reverseRemap);

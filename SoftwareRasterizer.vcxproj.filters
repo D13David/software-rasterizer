@@ -5,9 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="extern">
-      <UniqueIdentifier>{feb2a230-4912-4c7c-b186-909447501af0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="common">
       <UniqueIdentifier>{ef14c214-f67a-43b6-af43-c884db788bc3}</UniqueIdentifier>
     </Filter>
@@ -17,168 +14,165 @@
     <Filter Include="renderer">
       <UniqueIdentifier>{2014c06d-2690-4c21-96e3-d156da9aecab}</UniqueIdentifier>
     </Filter>
-    <Filter Include="io">
-      <UniqueIdentifier>{7042fb50-b5bb-414d-a321-0c25456d7761}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\test_scenes">
       <UniqueIdentifier>{f7a503b5-540e-4303-b399-0064cf98c0ac}</UniqueIdentifier>
     </Filter>
+    <Filter Include="external">
+      <UniqueIdentifier>{feb2a230-4912-4c7c-b186-909447501af0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="tinyobj_loader.h">
-      <Filter>extern</Filter>
-    </ClCompile>
-    <ClCompile Include="raster.cpp">
-      <Filter>renderer</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="fps_meter.cpp">
-      <Filter>renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="mathlib.h">
-      <Filter>math</Filter>
-    </ClCompile>
-    <ClCompile Include="texture_loader.cpp">
-      <Filter>renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="mesh_loader.cpp">
-      <Filter>renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="thread_pool.cpp">
+    <ClCompile Include="common\export_buffer.cpp">
       <Filter>common</Filter>
     </ClCompile>
-    <ClCompile Include="parallel_for.cpp">
+    <ClCompile Include="common\parallel_for.cpp">
       <Filter>common</Filter>
     </ClCompile>
-    <ClCompile Include="export_buffer.cpp">
+    <ClCompile Include="common\profile.cpp">
       <Filter>common</Filter>
     </ClCompile>
-    <ClCompile Include="mesh.cpp">
-      <Filter>renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="uarch_loader.cpp">
-      <Filter>io</Filter>
-    </ClCompile>
-    <ClCompile Include="profile.cpp">
+    <ClCompile Include="common\thread_pool.cpp">
       <Filter>common</Filter>
     </ClCompile>
-    <ClCompile Include="render_stats.cpp">
+    <ClCompile Include="renderer\fps_meter.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="raster_2d.cpp">
+    <ClCompile Include="renderer\input_stream.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="raster_vtransf.cpp">
+    <ClCompile Include="renderer\mesh.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="raster_binning.cpp">
+    <ClCompile Include="renderer\mesh_loader.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="raster_rasterize.cpp">
+    <ClCompile Include="renderer\raster.cpp">
       <Filter>renderer</Filter>
     </ClCompile>
-    <ClCompile Include="test_scene_2d.cpp">
+    <ClCompile Include="renderer\raster_2d.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\raster_binning.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\raster_rasterize.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\raster_vtransf.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\render_stats.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\texture_loader.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="test_scenes\test_scene_2d.cpp">
       <Filter>Source Files\test_scenes</Filter>
     </ClCompile>
-    <ClCompile Include="test_scene_empty.cpp">
+    <ClCompile Include="test_scenes\test_scene_empty.cpp">
       <Filter>Source Files\test_scenes</Filter>
     </ClCompile>
-    <ClCompile Include="test_scene_unreal.cpp">
+    <ClCompile Include="test_scenes\test_scene_sponza.cpp">
       <Filter>Source Files\test_scenes</Filter>
     </ClCompile>
-    <ClCompile Include="test_scene_sponza.cpp">
+    <ClCompile Include="test_scenes\test_scene_tr3.cpp">
       <Filter>Source Files\test_scenes</Filter>
     </ClCompile>
-    <ClCompile Include="input_stream.cpp">
-      <Filter>renderer</Filter>
+    <ClCompile Include="test_scenes\test_scene_unreal.cpp">
+      <Filter>Source Files\test_scenes</Filter>
     </ClCompile>
-    <ClCompile Include="test_scene_tr3.cpp">
+    <ClCompile Include="test_scenes\uarch_loader.cpp">
       <Filter>Source Files\test_scenes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="raster.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="fps_meter.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="common.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="mathlib_types.h">
-      <Filter>math</Filter>
-    </ClInclude>
-    <ClInclude Include="mat4.h">
-      <Filter>math</Filter>
-    </ClInclude>
-    <ClInclude Include="mathlib_intrinsics.h">
-      <Filter>math</Filter>
-    </ClInclude>
-    <ClInclude Include="mathlib_common.h">
-      <Filter>math</Filter>
-    </ClInclude>
-    <ClInclude Include="raster_common.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="raster_types.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="texture_loader.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="mesh_loader.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="thread_pool.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="parallel_for.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="thirteen.h">
-      <Filter>extern</Filter>
-    </ClInclude>
-    <ClInclude Include="export_buffer.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="stb_image_resize2.h">
-      <Filter>extern</Filter>
-    </ClInclude>
-    <ClInclude Include="mesh.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="uarch_loader.h">
-      <Filter>io</Filter>
-    </ClInclude>
-    <ClInclude Include="profile.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="render_stats.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="raster_internal.h">
-      <Filter>renderer</Filter>
-    </ClInclude>
     <ClInclude Include="shared.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="fast_obj.h">
-      <Filter>extern</Filter>
+    <ClInclude Include="external\fast_obj.h">
+      <Filter>external</Filter>
     </ClInclude>
-    <ClInclude Include="uthash.h">
-      <Filter>extern</Filter>
+    <ClInclude Include="external\stb_image_resize2.h">
+      <Filter>external</Filter>
     </ClInclude>
-    <ClInclude Include="vec3.h">
+    <ClInclude Include="external\thirteen.h">
+      <Filter>external</Filter>
+    </ClInclude>
+    <ClInclude Include="external\tinyobj_loader.h">
+      <Filter>external</Filter>
+    </ClInclude>
+    <ClInclude Include="math\color4.h">
       <Filter>math</Filter>
     </ClInclude>
-    <ClInclude Include="input_stream.h">
+    <ClInclude Include="math\mat4.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="math\mathlib.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="math\mathlib_common.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="math\mathlib_intrinsics.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="math\mathlib_types.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="math\vec3.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="common\common.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\export_buffer.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\parallel_for.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\profile.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\thread_pool.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\fps_meter.h">
       <Filter>renderer</Filter>
     </ClInclude>
-    <ClInclude Include="color4.h">
-      <Filter>math</Filter>
+    <ClInclude Include="renderer\input_stream.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\mesh.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\mesh_loader.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\raster.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\raster_common.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\raster_internal.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\raster_types.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\render_stats.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\texture_loader.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="test_scenes\uarch_loader.h">
+      <Filter>Source Files\test_scenes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

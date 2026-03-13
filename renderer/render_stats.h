@@ -1,7 +1,7 @@
 #ifndef PJD_RENDER_STATS_H
 #define PJD_RENDER_STATS_H
 
-#include "common.h"
+#include "common/common.h"
 
 #include <atomic>
 

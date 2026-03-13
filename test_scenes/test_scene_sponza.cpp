@@ -1,10 +1,10 @@
 #include "shared.h"
-#include "mesh_loader.h"
-#include "texture_loader.h"
-#include "thirteen.h"
+#include "renderer/mesh_loader.h"
+#include "renderer/texture_loader.h"
+#include "external/thirteen.h"
 
 #define FAST_OBJ_IMPLEMENTATION
-#include "fast_obj.h"
+#include "external/fast_obj.h"
 
 #include <vector>
 

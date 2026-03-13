@@ -2,7 +2,7 @@
 
 #include "profile.h"
 #include "common.h"
-#include "raster.h"
+#include "renderer/raster.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>

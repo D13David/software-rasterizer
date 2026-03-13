@@ -1,8 +1,8 @@
 #include "shared.h"
-#include "common.h"
-#include "texture_loader.h"
-#include "raster.h"
-#include "thirteen.h"
+#include "common/common.h"
+#include "renderer/texture_loader.h"
+#include "renderer/raster.h"
+#include "external/thirteen.h"
 #include <unordered_map>
 
 // Reference https://opentomb.github.io/TRosettaStone3/trosettastone.html#level_format_tr3
@@ -39,7 +39,7 @@ typedef struct Tr3Texture
     uint16_t Attribute;
     uint16_t Page;
     uint16_t uv[4][2];
-};
+} Tr3Texture;
 
 typedef struct Vertex
 {
@@ -136,7 +136,7 @@ static void LoadTextureAtlases(FILE* fp)
     assert(NumTexturePages < MAX_TEXTURE_PAGES);
 
     uint16_t page16bit[0x10000];
-    for (int i = 0; i < NumTexturePages; ++i)
+    for (uint32_t i = 0; i < NumTexturePages; ++i)
     {
         fread(page16bit, sizeof(uint16_t), sizeof(page16bit) / sizeof(uint16_t), fp);
 
@@ -418,7 +418,7 @@ static void BatchQuads(Tr3Room* room, RoomDrawInfo* drawInfo)
     }
 }
 
-static void MouseDelta(vec2 out)
+static void MouseDelta(vec2i out)
 {
     POINT p;
     if (GetCursorPos(&p))
@@ -437,7 +437,7 @@ static void MouseDelta(vec2 out)
 
 static void HandleInput()
 {
-    vec2 mouseDelta;
+    vec2i mouseDelta;
     vec3 tmp;
     MouseDelta(mouseDelta);
 

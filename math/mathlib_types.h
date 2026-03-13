@@ -1,7 +1,7 @@
 #ifndef PJD_MATHLIB_TYPES_H
 #define PJD_MATHLIB_TYPES_H
 
-#include "common.h"
+#include "common/common.h"
 
 typedef int                 vec2i[2];
 typedef int                 vec3i[3];

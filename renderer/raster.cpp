@@ -1,10 +1,10 @@
 #include "raster.h"
 #include "raster_internal.h"
 #include "texture_loader.h"
-#include "thread_pool.h"
-#include "export_buffer.h"
-#include "profile.h"
-#include "parallel_for.h"
+#include "common/thread_pool.h"
+#include "common/export_buffer.h"
+#include "common/profile.h"
+#include "common/parallel_for.h"
 
 #define EXPORT_BUFFER_SIZE (128 * 1024 * 1024)
 
@@ -178,7 +178,7 @@ rgba8 SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
 
 static void RunDrawTrianglesWireframe(rgba8 color)
 {
-    int numVertices = (ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex));
+    size_t numVertices = (ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex));
     ExportVertex* vertexStart = (ExportVertex*)ExportBufferData(ExportBuffer);
     for (int i = 0; i < numVertices; i += 3)
     {

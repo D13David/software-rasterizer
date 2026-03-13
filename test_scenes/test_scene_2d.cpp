@@ -1,7 +1,7 @@
 #include "shared.h"
-#include "profile.h"
-#include "raster.h"
-#include "thirteen.h"
+#include "common/profile.h"
+#include "renderer/raster.h"
+#include "external/thirteen.h"
 
 #if PJD_ACTIVE_SCENE == TEST_SCENE_2D
 

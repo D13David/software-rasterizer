@@ -20,7 +20,7 @@ typedef struct MeshAnimSeq
     uint32_t    StartFrame;
     uint32_t    NumFrames;
     float       Rate;
-};
+} MeshAnimSeq;
 
 typedef struct Mesh 
 {

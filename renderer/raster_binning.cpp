@@ -1,9 +1,9 @@
 #include "raster.h"
 #include "raster_internal.h"
-#include "export_buffer.h"
-#include "profile.h"
-#include "thread_pool.h"
-#include "parallel_for.h"
+#include "common/export_buffer.h"
+#include "common/profile.h"
+#include "common/thread_pool.h"
+#include "common/parallel_for.h"
 
 #include <algorithm>
 

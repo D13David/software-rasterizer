@@ -7,7 +7,7 @@
 #include <math.h>
 
 #define TINYOBJ_LOADER_C_IMPLEMENTATION
-#include "tinyobj_loader.h"
+#include "external/tinyobj_loader.h"
 
 static char* mmap_file(size_t* len, const char* filename) {
     HANDLE file =
@@ -239,7 +239,7 @@ int LoadMeshFromFile(const char* filename, Mesh** outputMesh)
 
     size_t face_offset = 0;
     uint8_t* vertexBufferStart = (uint8_t*)mesh->VertexBuffer;
-    for (int i = 0; i < attrib.num_face_num_verts; ++i)
+    for (unsigned int i = 0; i < attrib.num_face_num_verts; ++i)
     {
         assert(attrib.face_num_verts[i] % 3 == 0);
 

@@ -1,9 +1,9 @@
 #include "texture_loader.h"
-#include "common.h"
-#include "mathlib_common.h"
+#include "common/common.h"
+#include "math/mathlib_common.h"
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "stb_image_resize2.h"
+#include "external/stb_image_resize2.h"
 
 TextureView GNullTexture;
 TextureView GCheckerBoardTexture;
@@ -136,7 +136,7 @@ void WriteToTgaFile(const char* filename, uint32_t width, uint32_t height, uint8
     fclose(fp);
 }
 
-static uint32_t ComputeMipMapSize(uint32_t width, uint32_t height, uint32_t bpp, uint32_t minDimension, size_t* maxLevels)
+static uint32_t ComputeMipMapSize(uint32_t width, uint32_t height, uint32_t bpp, uint32_t minDimension, uint32_t* maxLevels)
 {
     uint32_t size = 0;
     uint32_t levels = 1;
@@ -178,7 +178,7 @@ static void GenerateMipMaps(uint8_t* data, TextureView& texture)
 {
     assert(texture.Data == NULL && "texture already initialized...");
     
-    size_t maxMipMapLevels;
+    uint32_t maxMipMapLevels;
     size_t bufferSize = ComputeMipMapSize(texture.Width, texture.Height, 4, 1, &maxMipMapLevels);
 
     texture.MipOffsets = (size_t*)calloc(maxMipMapLevels, sizeof(size_t));
@@ -187,8 +187,8 @@ static void GenerateMipMaps(uint8_t* data, TextureView& texture)
     uint8_t* buffer = (uint8_t*)malloc(bufferSize);
     assert(buffer != NULL);
 
-    size_t w = texture.Width;
-    size_t h = texture.Height;
+    int w = texture.Width;
+    int h = texture.Height;
 
     memcpy(buffer, data, w * h * 4);
     texture.MipOffsets[0] = 0;

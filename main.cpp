@@ -7,14 +7,14 @@
 #include <stdlib.h>
 
 #define THIRTEEN_IMPLEMENTATION
-#include "thirteen.h"
+#include "external/thirteen.h"
 
-#include "fps_meter.h"
-#include "profile.h"
-#include "render_stats.h"
+#include "renderer/fps_meter.h"
+#include "common/profile.h"
+#include "renderer/render_stats.h"
 #include "shared.h"
-#include "raster.h"
-#include "texture_loader.h"
+#include "renderer/raster.h"
+#include "renderer/texture_loader.h"
 
 #define FPS_METER_WIDTH 200
 #define FPS_METER_HEIGHT 70
@@ -29,7 +29,7 @@ float DeltaTime;
 
 static bool ShowHelp = false;
 static bool ShowPerformanceMetrics = true;
-static DWORD LastTime;
+static ULONGLONG LastTime;
 static char ApplicationDataPath[MAX_PATH];
 
 static void CaptureScreenshot();
@@ -102,11 +102,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
     FPSMeterInitialize();
 
-    LastTime = GetTickCount();
+    LastTime = GetTickCount64();
 
     while (true)
     {
-        DWORD currentTime = GetTickCount();
+        ULONGLONG currentTime = GetTickCount64();
         DeltaTime = (currentTime - LastTime) / 1000.0f;
         LastTime = currentTime;
 
@@ -144,7 +144,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
             const int height = 200;
             int top = (FB_HEIGHT - height) / 2;
             int left = (FB_WIDTH - width) / 2;
-            DrawRectangle(left, top, width, height, COLOR(0.4, 0.4, 0.4), CLOSE_DOT_FILL);
+            DrawRectangle(left, top, width, height, COLOR(0.4f, 0.4f, 0.4f), CLOSE_DOT_FILL);
 
             int offset = top + 5;
             for (int i = 0; Commands[i].Help; ++i)
@@ -164,7 +164,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
             break;
         }
     }
-exit:
+
     SceneDestroy();
 
     if (depthBuffer) {

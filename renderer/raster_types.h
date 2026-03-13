@@ -1,7 +1,7 @@
 #ifndef PJD_RASTER_TYPES_H
 #define PJD_RASTER_TYPES_H
 
-#include "common.h"
+#include "common/common.h"
 
 typedef struct ModeDesc
 {
@@ -51,11 +51,11 @@ enum TextureFilter
 
 struct TextureView
 {
-    int     Width;
-    int     Height;
-    int     MipLevels;
-    void*   Data;
-    size_t* MipOffsets;
+    int         Width;
+    int         Height;
+    uint32_t    MipLevels;
+    void*       Data;
+    size_t*     MipOffsets;
 };
 
 enum DrawMode

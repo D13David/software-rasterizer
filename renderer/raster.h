@@ -1,10 +1,10 @@
 #ifndef PJD_RASTER_H
 #define PJD_RASTER_H
 
-#include "common.h"
+#include "common/common.h"
 #include "raster_common.h"
 #include "input_stream.h"
-#include "mathlib.h"
+#include "math/mathlib.h"
 
 #if PJD_DEBUG_VIEW_ENABLED
 typedef enum DebugMode

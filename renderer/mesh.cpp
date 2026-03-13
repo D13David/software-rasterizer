@@ -54,7 +54,7 @@ const MeshAnimSeq* FindAnimSequence(Mesh* mesh, const char* name)
 
 static void UpdateFramesExplicite(Mesh* mesh, int frameOffset1, int frameOffset2, float blendFactor)
 {
-    int vertexSize = InputStreamStride(mesh->InputDesc, mesh->NumInputElements);
+    size_t vertexSize = InputStreamStride(mesh->InputDesc, mesh->NumInputElements);
 
     float* uvReference = (float*)mesh->VertexBuffer;
     float* frame1Start = (float*)((uint8_t*)mesh->VertexBuffer + (frameOffset1 * vertexSize));
@@ -64,8 +64,9 @@ static void UpdateFramesExplicite(Mesh* mesh, int frameOffset1, int frameOffset2
         mesh->FrameCache = malloc(mesh->NumVertsPerFrame * vertexSize);
     }
     float* target = (float*)mesh->FrameCache;
+    assert(target != NULL);
 
-    for (int i = 0; i < mesh->NumVertsPerFrame; ++i)
+    for (uint32_t i = 0; i < mesh->NumVertsPerFrame; ++i)
     {
         // FIXME: proper lookup, this assumes position location
         float x1, y1, z1, x2, y2, z2;

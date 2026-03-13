@@ -7,6 +7,10 @@
 extern "C" {
 #endif
 
+#if defined(DECLARE_INTERFACE)
+#undef DECLARE_INTERFACE
+#endif // DECLARE_INTERFACE
+
 #if PJD_PROFILING_ENABLED
 #define DECLARE_INTERFACE(function) function
 #else

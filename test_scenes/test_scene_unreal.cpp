@@ -1,9 +1,9 @@
-#include "profile.h"
-#include "raster.h"
+#include "common/profile.h"
+#include "renderer/raster.h"
 #include "shared.h"
-#include "mesh.h"
+#include "renderer/mesh.h"
 #include "uarch_loader.h"
-#include "texture_loader.h"
+#include "renderer/texture_loader.h"
 
 #if PJD_ACTIVE_SCENE == TEST_SCENE_UNREAL
 

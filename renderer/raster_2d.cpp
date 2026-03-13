@@ -451,7 +451,7 @@ void DrawEllipse(int cx, int cy, int rx, int ry, uint32_t color, FillStyle style
         }
     }
 
-    p = ry2 * (x + 0.5) * (x + 0.5) + rx2 * (y - 1) * (y - 1) - rx2 * ry2;
+    p = (long)(ry2 * (x + 0.5f) * (x + 0.5f) + rx2 * (y - 1) * (y - 1) - rx2 * ry2);
     while (y >= 0)
     {
         FillHorizontalLine(cx - x, cx + x, cy + y, color, FillPatterns[style]);

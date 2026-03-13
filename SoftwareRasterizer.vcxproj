@@ -105,6 +105,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>./</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -120,6 +121,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>./</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,6 +137,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);PJD_PROFILING_BUILD</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>./</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -149,6 +152,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/arch:AVX %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>./</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -165,6 +169,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/arch:AVX %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>./</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -181,6 +186,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/arch:AVX %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>./</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -188,59 +194,58 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="export_buffer.cpp" />
-    <ClCompile Include="fps_meter.cpp" />
-    <ClCompile Include="input_stream.cpp" />
-    <ClCompile Include="mathlib.h" />
-    <ClCompile Include="mesh.cpp" />
-    <ClCompile Include="mesh_loader.cpp" />
-    <ClCompile Include="parallel_for.cpp" />
-    <ClCompile Include="profile.cpp" />
-    <ClCompile Include="raster.cpp" />
+    <ClCompile Include="common\export_buffer.cpp" />
+    <ClCompile Include="common\parallel_for.cpp" />
+    <ClCompile Include="common\profile.cpp" />
+    <ClCompile Include="common\thread_pool.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="raster_2d.cpp" />
-    <ClCompile Include="raster_binning.cpp" />
-    <ClCompile Include="raster_rasterize.cpp" />
-    <ClCompile Include="raster_vtransf.cpp" />
-    <ClCompile Include="render_stats.cpp" />
-    <ClCompile Include="test_scene_2d.cpp" />
-    <ClCompile Include="test_scene_empty.cpp" />
-    <ClCompile Include="test_scene_sponza.cpp" />
-    <ClCompile Include="test_scene_tr3.cpp" />
-    <ClCompile Include="test_scene_unreal.cpp" />
-    <ClCompile Include="texture_loader.cpp" />
-    <ClCompile Include="thread_pool.cpp" />
-    <ClCompile Include="tinyobj_loader.h" />
-    <ClCompile Include="uarch_loader.cpp" />
+    <ClCompile Include="renderer\fps_meter.cpp" />
+    <ClCompile Include="renderer\input_stream.cpp" />
+    <ClCompile Include="renderer\mesh.cpp" />
+    <ClCompile Include="renderer\mesh_loader.cpp" />
+    <ClCompile Include="renderer\raster.cpp" />
+    <ClCompile Include="renderer\raster_2d.cpp" />
+    <ClCompile Include="renderer\raster_binning.cpp" />
+    <ClCompile Include="renderer\raster_rasterize.cpp" />
+    <ClCompile Include="renderer\raster_vtransf.cpp" />
+    <ClCompile Include="renderer\render_stats.cpp" />
+    <ClCompile Include="renderer\texture_loader.cpp" />
+    <ClCompile Include="test_scenes\test_scene_2d.cpp" />
+    <ClCompile Include="test_scenes\test_scene_empty.cpp" />
+    <ClCompile Include="test_scenes\test_scene_sponza.cpp" />
+    <ClCompile Include="test_scenes\test_scene_tr3.cpp" />
+    <ClCompile Include="test_scenes\test_scene_unreal.cpp" />
+    <ClCompile Include="test_scenes\uarch_loader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="color4.h" />
-    <ClInclude Include="common.h" />
-    <ClInclude Include="export_buffer.h" />
-    <ClInclude Include="fast_obj.h" />
-    <ClInclude Include="fps_meter.h" />
-    <ClInclude Include="input_stream.h" />
-    <ClInclude Include="mat4.h" />
-    <ClInclude Include="mathlib_common.h" />
-    <ClInclude Include="mathlib_intrinsics.h" />
-    <ClInclude Include="mathlib_types.h" />
-    <ClInclude Include="mesh.h" />
-    <ClInclude Include="mesh_loader.h" />
-    <ClInclude Include="parallel_for.h" />
-    <ClInclude Include="profile.h" />
-    <ClInclude Include="raster.h" />
-    <ClInclude Include="raster_common.h" />
-    <ClInclude Include="raster_internal.h" />
-    <ClInclude Include="raster_types.h" />
-    <ClInclude Include="render_stats.h" />
+    <ClInclude Include="common\common.h" />
+    <ClInclude Include="common\export_buffer.h" />
+    <ClInclude Include="common\parallel_for.h" />
+    <ClInclude Include="common\profile.h" />
+    <ClInclude Include="common\thread_pool.h" />
+    <ClInclude Include="external\fast_obj.h" />
+    <ClInclude Include="external\stb_image_resize2.h" />
+    <ClInclude Include="external\thirteen.h" />
+    <ClInclude Include="external\tinyobj_loader.h" />
+    <ClInclude Include="math\color4.h" />
+    <ClInclude Include="math\mat4.h" />
+    <ClInclude Include="math\mathlib.h" />
+    <ClInclude Include="math\mathlib_common.h" />
+    <ClInclude Include="math\mathlib_intrinsics.h" />
+    <ClInclude Include="math\mathlib_types.h" />
+    <ClInclude Include="math\vec3.h" />
+    <ClInclude Include="renderer\fps_meter.h" />
+    <ClInclude Include="renderer\input_stream.h" />
+    <ClInclude Include="renderer\mesh.h" />
+    <ClInclude Include="renderer\mesh_loader.h" />
+    <ClInclude Include="renderer\raster.h" />
+    <ClInclude Include="renderer\raster_common.h" />
+    <ClInclude Include="renderer\raster_internal.h" />
+    <ClInclude Include="renderer\raster_types.h" />
+    <ClInclude Include="renderer\render_stats.h" />
+    <ClInclude Include="renderer\texture_loader.h" />
     <ClInclude Include="shared.h" />
-    <ClInclude Include="stb_image_resize2.h" />
-    <ClInclude Include="texture_loader.h" />
-    <ClInclude Include="thirteen.h" />
-    <ClInclude Include="thread_pool.h" />
-    <ClInclude Include="uarch_loader.h" />
-    <ClInclude Include="uthash.h" />
-    <ClInclude Include="vec3.h" />
+    <ClInclude Include="test_scenes\uarch_loader.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="todo.txt" />

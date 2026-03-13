@@ -127,7 +127,7 @@ PJD_INLINE rgba8 BlendRGBA8(rgba8 a, rgba8 b, float t)
 {
     RGBA_UNPACK(a, r0, g0, b0, a0);
     RGBA_UNPACK(b, r1, g1, b1, a1);
-    uint8_t alpha = t * 255;
+    uint8_t alpha = (uint8_t)(t * 255);
     return RGBA_PACK
     (
         (uint8_t)((r0 * (255 - alpha) + r1 * alpha) >> 8),

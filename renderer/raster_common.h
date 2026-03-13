@@ -1,7 +1,7 @@
 #ifndef PJD_RASTER_COMMON_H
 #define PJD_RASTER_COMMON_H
 
-#include "mathlib.h"
+#include "math/mathlib.h"
 #include "raster_types.h"
 
 typedef enum FillStyle
