@@ -80,12 +80,6 @@ void ExportBufferDestroy(ExportBufferHandle buffer)
     free(buffer);
 }
 
-static PJD_INLINE uint8_t* ExportBufferMemory(ExportBuffer* buffer)
-{
-    assert(buffer != NULL);
-    return buffer->Memory;
-}
-
 const Range* ExportBufferReserve(ExportBufferHandle buffer, size_t size)
 {
     if (buffer == NULL || size == 0) {
@@ -113,13 +107,10 @@ const Range* ExportBufferReserve(ExportBufferHandle buffer, size_t size)
             continue;
         }
 
-        //EnterCriticalSection(&buffer->RangeLock);
-
         // allocate a slot for the new range
         size_t rangeIndex = std::atomic_fetch_add_explicit(&buffer->NextRegionIndex, 1, std::memory_order_relaxed);
         if (rangeIndex >= buffer->MaxRanges) 
         {
-            //LeaveCriticalSection(&buffer->RangeLock);
             return NULL;
         }
 
@@ -127,8 +118,6 @@ const Range* ExportBufferReserve(ExportBufferHandle buffer, size_t size)
         range->Ptr = &buffer->Memory[currentOffset];
         range->Size = size;
         range->Published.store(false, std::memory_order_relaxed);
-
-       // LeaveCriticalSection(&buffer->RangeLock);
 
         return range;
     }

@@ -1,6 +1,8 @@
 #ifndef PJD_EXPORT_BUFFER_H
 #define PJD_EXPORT_BUFFER_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -9,7 +11,7 @@ typedef struct ExportBuffer* ExportBufferHandle;
 
 typedef struct Range
 {
-    void*       Ptr;
+    uint8_t*    Ptr;
     size_t      Size;
 } Range;
 

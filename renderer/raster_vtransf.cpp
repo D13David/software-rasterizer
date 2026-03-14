@@ -124,7 +124,8 @@ static vec3 NormalDefault = { 0, 0, 0 };
 static void RunVertexTransform_(size_t id, int start, int end, void* context)
 {
     // setup vertex attribute streams
-    VertexTransformCommand* command = (VertexTransformCommand*)context;
+    VertexTransformCommand command1 = *(VertexTransformCommand*)context;
+    VertexTransformCommand* command = &command1;
     size_t stride = InputStreamStride(command->Elements, command->NumInputElements);
 
     const InputElementDescriptor* inputElementPosition = InputStreamElementByType(command->Elements, command->NumInputElements, InputElementType::Position);
@@ -143,7 +144,7 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
         const Range* range = ExportBufferReserve(ExportBuffer, allocatedVertexCount * sizeof(ExportVertex));
         ExportVertex* exportVertexPtr = (ExportVertex*)range->Ptr;
         assert(exportVertexPtr != NULL);
-        ExportVertex* exportVertexEndPtr = exportVertexPtr + allocatedVertexCount;
+        ExportVertex* exportVertexEndPtr = (ExportVertex*)(range->Ptr + range->Size);
 
         allocationHint = 0;
 
@@ -167,8 +168,6 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
             if ((out0 & out1 & out2) != 0)
             {
                 RENDER_STATS_ADD(TrianglesCulled, 1);
-                memset(exportVertexPtr, 0, sizeof(ExportVertex) * 3);
-                exportVertexPtr += 3;
                 continue;
             }
 
@@ -265,6 +264,9 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
                 RENDER_STATS_ADD(TrianglesRendered, 1);
             }
         }
+
+        ptrdiff_t numFreeVertices = exportVertexEndPtr - exportVertexPtr;
+        memset(exportVertexPtr, 0, numFreeVertices * sizeof(ExportVertex));
 
         // publish the written range
         ExportBufferPublish(ExportBuffer, range);
