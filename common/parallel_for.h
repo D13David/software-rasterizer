@@ -9,7 +9,7 @@ extern "C" {
 
 typedef void (*ParallelForFunc)(size_t id, int start, int end, void* context);
 
-void ParallelFor(ThreadPoolHandle pool, int begin, int end, int grainSize, ParallelForFunc func, void* userContext);
+void ParallelFor(ThreadPoolHandle pool, int begin, int end, int grainSize, ParallelForFunc func, bool syncWithTasks, void* userContext);
 
 #ifdef __cplusplus
 }

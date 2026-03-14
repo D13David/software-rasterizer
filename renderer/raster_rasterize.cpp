@@ -358,21 +358,23 @@ static void DrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const E
 
 static void RunRasterizeTriangles_(size_t id, int tileIndexStart, int tileIndexEnd, void* context)
 {
+    const Range* range = (const Range*)context;
+
     for (int i = tileIndexStart; i < tileIndexEnd; ++i)
     {
         ScreenTile* tile = &Tiles[i];
 
         for (int j = 0; j < tile->NumTriangles; ++j)
         {
-            ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer) + tile->BinnedTriangles[j] * 3;
+            ExportVertex* transformedVertices = (ExportVertex*)range->Ptr + tile->BinnedTriangles[j] * 3;
             DrawTriangle(&transformedVertices[0], &transformedVertices[1], &transformedVertices[2], i);
         }
     }
 }
 
-void RunRasterizeTriangles(bool parallelize)
+void RunRasterizeTriangles(bool parallelize, const Range* range)
 {
     PROFILE_AUTO("Rasterize");
-    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, THREAD_GROUP_SIZE_RASTERIZE, &RunRasterizeTriangles_, NULL);
-    else RunRasterizeTriangles_(0, 0, MAX_TILES, NULL);
+    if (parallelize) ParallelFor(ThreadPool, 0, MAX_TILES, THREAD_GROUP_SIZE_RASTERIZE, &RunRasterizeTriangles_, true, (void*)range);
+    else RunRasterizeTriangles_(0, 0, MAX_TILES, (void*)range);
 }

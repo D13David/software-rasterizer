@@ -281,12 +281,20 @@ static const uint64_t RasterFont8x8[] = {
     0x0010000000000000ULL,
 };
 
+static void (*DrawFunc)(int x, int y, rgba8 color) = DrawPixelToScreen;
+
 static void DrawPixelToScreenSafe(int x, int y, rgba8 color)
 {
     if (x < 0 || x > FB_WIDTH - 1 || y < 0 || y > FB_HEIGHT - 1) {
         return;
     }
-    DrawPixelToScreen(x, y, color);
+    DrawFunc(x, y, color);
+}
+
+void RasterMode2D(bool direct)
+{
+    if (direct) DrawFunc = DrawPixelToScreen;
+    else DrawFunc = DrawPixel;
 }
 
 void DrawLine(int x0, int y0, int x1, int y1, rgba8 color, uint8_t thickness /*= 1*/, LineStyle style /*= SOLID_LINE */)

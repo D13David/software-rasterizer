@@ -9,7 +9,7 @@ using AtomicInt = std::atomic<int>;
 #define ENABLE_CHECKERBOARD_RENDERING 0
 
 // enable tiled framebuffer layout
-#define ENABLE_TILED_FRAMEBUFFER_LAYOUT 0
+#define ENABLE_TILED_FRAMEBUFFER_LAYOUT 1
 
 #if PJD_DEBUG_VIEW_ENABLED
     // enable for rendering color coded mip-map levels
@@ -147,8 +147,8 @@ void WriteFramebufferDirect(int offset, rgba8 color);
 rgba8 SampleTextureLod(int sx, int sy, float u, float v, float mipLevel);
 
 void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransformCommand* command);
-void RunTriangleBinning(bool parallelize);
-void RunRasterizeTriangles(bool parallelize);
+void RunTriangleBinning(bool parallelize, const struct Range* range);
+void RunRasterizeTriangles(bool parallelize, const struct Range* range);
 
 #if DEBUG_TILE_CLASSIFICATION
 void DebugViewTileCoverage();

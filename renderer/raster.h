@@ -30,6 +30,8 @@ void SetDebugMode(DebugMode mode);
 #endif
 void SetPixelShader(PS shader);
 
+void GetViewport(uint32_t* width, uint32_t* height);
+
 void Clear(rgba8 color);
 void DrawPixel(int x, int y, rgba8 color);
 void DrawPixelToScreen(int x, int y, rgba8 color);
@@ -46,6 +48,7 @@ rgba8 SampleTextureLod(int sx, int sy, float u, float v, float mipLevel);
 /*----------------------------------------------------------------------------
     2D Drawing
 ----------------------------------------------------------------------------*/
+void RasterMode2D(bool direct);
 void DrawLine(int x0, int y0, int x1, int y1, rgba8 color, uint8_t thickness = 1, LineStyle style = SOLID_LINE);
 void DrawRectangle(int x, int y, int w, int h, rgba8 color, FillStyle style = SOLID_FILL);
 void DrawCircle(int cx, int cy, int radius, uint32_t color, FillStyle style = SOLID_FILL);

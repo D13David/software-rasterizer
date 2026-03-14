@@ -1,4 +1,5 @@
 #include "parallel_for.h"
+#include "common/common.h"
 
 #include <malloc.h>
 #include <atomic>
@@ -7,7 +8,8 @@ using atomic_int = std::atomic<int>;
 
 typedef struct ParallelForContext
 {
-    atomic_int      NextIndex;
+    PJD_ALIGN(64)  atomic_int NextIndex;
+    PJD_ALIGN(64)  atomic_int WorkersRemaining;
     int             End;
     int             GrainSize;
     ParallelForFunc Func;
@@ -22,7 +24,11 @@ static void ParallelForWorker(size_t id, void* arg)
     {
         int start = std::atomic_fetch_add(&context->NextIndex, context->GrainSize);
 
-        if (start >= context->End) {
+        if (start >= context->End) 
+        {
+            if (context->WorkersRemaining.fetch_sub(1) == 1) {
+                free(context);
+            }
             break;
         }
 
@@ -35,7 +41,7 @@ static void ParallelForWorker(size_t id, void* arg)
     }
 }
 
-void ParallelFor(ThreadPoolHandle pool, int begin, int end, int grainSize, ParallelForFunc func, void* userContext)
+void ParallelFor(ThreadPoolHandle pool, int begin, int end, int grainSize, ParallelForFunc func, bool syncWithTasks, void* userContext)
 {
     if (pool == NULL || func == NULL || begin >= end) {
         return;
@@ -45,16 +51,21 @@ void ParallelFor(ThreadPoolHandle pool, int begin, int end, int grainSize, Paral
         grainSize = 1;
     }
 
-    ParallelForContext context;
-    context.NextIndex.store(begin);
-    context.End = end;
-    context.GrainSize = grainSize;
-    context.Func = func;
-    context.UserContext = userContext;
+    int numJobs = ThreadPoolGetNumWorkers(pool);
 
-    for (int i = 0; i < ThreadPoolGetNumWorkers(pool); ++i) {
-        ThreadPoolAddJob(pool, &ParallelForWorker, &context);
+    ParallelForContext* context = (ParallelForContext*)malloc(sizeof(ParallelForContext));
+    context->NextIndex.store(begin);
+    context->End = end;
+    context->GrainSize = grainSize;
+    context->Func = func;
+    context->UserContext = userContext;
+    context->WorkersRemaining.store(numJobs);
+
+    for (int i = 0; i < numJobs; ++i) {
+        ThreadPoolAddJob(pool, &ParallelForWorker, context);
     }
 
-    ThreadPoolWaitForJobs(pool);
+    if (syncWithTasks) {
+        ThreadPoolWaitForJobs(pool);
+    }
 }

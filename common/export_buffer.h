@@ -7,14 +7,25 @@ extern "C" {
 
 typedef struct ExportBuffer* ExportBufferHandle;
 
+typedef struct Range
+{
+    void*       Ptr;
+    size_t      Size;
+} Range;
+
 ExportBufferHandle ExportBufferCreate(size_t capacity, size_t maxRanges);
 void ExportBufferDestroy(ExportBufferHandle buffer);
-void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t* outOffset, struct Range** outRange);
-void ExportBufferPublish(ExportBufferHandle buffer, Range* range);
-size_t ExportBufferUsed(ExportBufferHandle buffer);
-void* ExportBufferData(ExportBufferHandle buffer);
 size_t ExportBufferCapacity(ExportBufferHandle buffer);
-void ExportBufferReset(ExportBufferHandle buffer);
+void ExportBufferReset(ExportBufferHandle buffer, bool forceFlush);
+
+// producer API
+const Range* ExportBufferReserve(ExportBufferHandle buffer, size_t size);
+void ExportBufferPublish(ExportBufferHandle buffer, const Range* range);
+
+// consumer API
+Range ExportBufferReadPublished(ExportBufferHandle buffer);
+
+void DebugDrawExportBufferBuckets(ExportBufferHandle buffer, int x, int y, int width, int height);
 
 #ifdef __cplusplus
 }

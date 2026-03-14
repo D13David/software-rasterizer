@@ -72,7 +72,8 @@ static PJD_INLINE void FlushTileCache(ThreadLocalTileCache* cache)
 
 static void RunTriangleBinning_(size_t id, int indexStart, int indexEnd, void* context)
 {
-    ExportVertex* transformedVertices = (ExportVertex*)ExportBufferData(ExportBuffer);
+    const Range* range = (const Range*)context;
+    ExportVertex* transformedVertices = (ExportVertex*)range->Ptr;
 
     ThreadLocalTileCache* tileCache = &ThreadTileCache[id];
 
@@ -120,7 +121,7 @@ static void RunTriangleBinning_(size_t id, int indexStart, int indexEnd, void* c
     }
 }
 
-void RunTriangleBinning(bool parallelize)
+void RunTriangleBinning(bool parallelize, const Range* range)
 {
     PROFILE_AUTO("Triangle Binning");
 
@@ -130,9 +131,10 @@ void RunTriangleBinning(bool parallelize)
         Tiles[i].NumTriangles = 0;
     }
 
-    int numTrianglesWritten = (int)(ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex)) / 3;
-    if (parallelize) ParallelFor(ThreadPool, 0, numTrianglesWritten, THREAD_GROUP_SIZE_BINNING, &RunTriangleBinning_, NULL);
-    else RunTriangleBinning_(0, 0, numTrianglesWritten, NULL);
+    //int numTrianglesWritten = (int)(ExportBufferReadPublished(ExportBuffer) / sizeof(ExportVertex)) / 3;
+    int numTrianglesWritten = (range->Size / sizeof(ExportVertex)) / 3;
+    if (parallelize) ParallelFor(ThreadPool, 0, numTrianglesWritten, THREAD_GROUP_SIZE_BINNING, &RunTriangleBinning_, true, (void*)range);
+    else RunTriangleBinning_(0, 0, numTrianglesWritten, (void*)range);
 
     // flush remaining cache entries
     for (int tid = 0; tid < ThreadPoolGetNumWorkers(ThreadPool); ++tid) {

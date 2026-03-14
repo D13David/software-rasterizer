@@ -139,9 +139,9 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
 
     do {
         // allocate a chunk of memory for our transformed vertex exports
-        struct Range* range;
         int allocatedVertexCount = (allocationHint > 0 ? allocationHint : (end - index)) * 3;
-        ExportVertex* exportVertexPtr = (ExportVertex*)ExportBufferReserve(ExportBuffer, allocatedVertexCount * sizeof(ExportVertex), NULL, &range);
+        const Range* range = ExportBufferReserve(ExportBuffer, allocatedVertexCount * sizeof(ExportVertex));
+        ExportVertex* exportVertexPtr = (ExportVertex*)range->Ptr;
         assert(exportVertexPtr != NULL);
         ExportVertex* exportVertexEndPtr = exportVertexPtr + allocatedVertexCount;
 
@@ -275,6 +275,6 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
 void RunVertexTransform(bool parallelize, int numPrimitives, VertexTransformCommand* command)
 {
     PROFILE_AUTO("Vertex Transform");
-    if (parallelize) ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE_VTRANSFORM, &RunVertexTransform_, command);
+    if (parallelize) ParallelFor(ThreadPool, 0, numPrimitives, THREAD_GROUP_SIZE_VTRANSFORM, &RunVertexTransform_, true, command);
     else RunVertexTransform_(0, 0, numPrimitives, command);
 }

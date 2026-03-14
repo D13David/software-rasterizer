@@ -124,6 +124,9 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         
         ResolveFrameBuffer();
 
+        // draw directly to screen after resolve
+        RasterMode2D(true);
+
         {
             PROFILE_AUTO("Scene Overlay 2D");
             SceneRenderOverlay2D();

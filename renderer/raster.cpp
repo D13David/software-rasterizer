@@ -100,6 +100,13 @@ void SetPixelShader(PS shader)
     Ctx.PixelShader = shader;
 }
 
+void GetViewport(uint32_t* width, uint32_t* height)
+{
+    assert(width && height);
+    *width = Ctx.Out.Width;
+    *height = Ctx.Out.Height;
+}
+
 void Clear(rgba8 color)
 {
     PROFILE_AUTO("Frame Buffer Clear");
@@ -169,8 +176,8 @@ rgba8 SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
     uint32_t mipWidth = max(1u, texture.Width >> mip);
     uint32_t mipHeight = max(1u, texture.Height >> mip);
 
-    int x = (int)(u * mipWidth);
-    int y = (int)(v * mipHeight);
+    uint32_t x = (int)(u * mipWidth);
+    uint32_t y = (int)(v * mipHeight);
 
     rgba8* mipData = (rgba8*)(((uint8_t*)texture.Data) + texture.MipOffsets[mip]);
     return mipData[y * mipWidth + x];
@@ -178,7 +185,7 @@ rgba8 SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
 
 static void RunDrawTrianglesWireframe(rgba8 color)
 {
-    size_t numVertices = (ExportBufferUsed(ExportBuffer) / sizeof(ExportVertex));
+    /*size_t numVertices = (ExportBufferReadPublished(ExportBuffer) / sizeof(ExportVertex));
     ExportVertex* vertexStart = (ExportVertex*)ExportBufferData(ExportBuffer);
     for (int i = 0; i < numVertices; i += 3)
     {
@@ -188,7 +195,7 @@ static void RunDrawTrianglesWireframe(rgba8 color)
         DrawLine(v0->ScreenX, v0->ScreenY, v1->ScreenX, v1->ScreenY, color, 2);
         DrawLine(v1->ScreenX, v1->ScreenY, v2->ScreenX, v2->ScreenY, color, 2);
         DrawLine(v2->ScreenX, v2->ScreenY, v0->ScreenX, v0->ScreenY, color, 2);
-    }
+    }*/
 }
 
 void DrawTriangleList(const void* data, const uint32_t* indices, const InputElementDescriptor* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
@@ -204,18 +211,25 @@ void DrawTriangleList(const void* data, const uint32_t* indices, const InputElem
 
     RunVertexTransform(parallel, numPrimitives, &command);
 
-    if (Ctx.DrawMode == Solid)
+    while (true)
     {
-        RunTriangleBinning(parallel);
-        RunRasterizeTriangles(parallel);
-    }
-    else
-    {
-        RunDrawTrianglesWireframe(COLOR(0.75, 0.75, 0.75));
+        Range range = ExportBufferReadPublished(ExportBuffer);
+        if (range.Ptr == NULL) {
+            break;
+        }
+
+        if (Ctx.DrawMode == Solid)
+        {
+            RunTriangleBinning(parallel, &range);
+            RunRasterizeTriangles(parallel, &range);
+        }
+        else
+        {
+            RunDrawTrianglesWireframe(COLOR(0.75, 0.75, 0.75));
+        }
     }
 
-    // TODO: we probably don't need to reset the buffer here
-    ExportBufferReset(ExportBuffer);
+    ExportBufferReset(ExportBuffer, false);
 }
 
 static void ResolveTiledFrameBuffer(size_t id, int startTile, int endTile, void* context)
@@ -267,7 +281,7 @@ void ResolveFrameBuffer()
 
     rgba8* outCB = (rgba8*)Ctx.Out.CB;
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT
-    ParallelFor(ThreadPool, 0, TILE_COUNT_X*TILE_COUNT_Y, 8, ResolveTiledFrameBuffer, NULL);
+    ParallelFor(ThreadPool, 0, TILE_COUNT_X*TILE_COUNT_Y, 8, ResolveTiledFrameBuffer, true, NULL);
 #elif ENABLE_CHECKERBOARD_RENDERING
     Frame = 1 - Frame;
     int width = Ctx.Out.Width;
@@ -289,6 +303,10 @@ void ResolveFrameBuffer()
 #else
     memcpy(outCB, ColorBuffer[Frame], FB_WIDTH * FB_HEIGHT * sizeof(uint32_t));
 #endif
+
+    DebugDrawExportBufferBuckets(ExportBuffer, 0, 300, FB_WIDTH/4, 50);
+
+    ExportBufferReset(ExportBuffer, true);
 }
 
 void SaveScreenshot(const char* filename)

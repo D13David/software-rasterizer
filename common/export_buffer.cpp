@@ -1,5 +1,6 @@
 #include "export_buffer.h"
 #include "common.h"
+#include "renderer/raster.h"
 
 #include <assert.h>
 #include <atomic>
@@ -7,21 +8,23 @@
 using atomic_size = std::atomic<size_t>;
 using atomic_bool = std::atomic<bool>;
 
-typedef struct Range
+typedef struct RangeInt : Range
 {
-    size_t      Offset;
-    size_t      Size;
     atomic_bool Published;
-} Range;
+} RangeInt;
 
 typedef struct ExportBuffer
 {
     size_t      Capacity;
-    alignas(64) atomic_size ReservedOffset;
-    alignas(64) atomic_size NextRegionIndex;
 
+    // memory head
+    alignas(64) atomic_size ReservedOffset;
+
+    // range allocator
     size_t      MaxRanges;
-    Range*      Ranges;
+    alignas(64) atomic_size NextRegionIndex;
+    RangeInt*   Ranges;
+
     size_t      PublishedOffset;
     size_t      PublishedRegionIndex;
 
@@ -45,7 +48,7 @@ ExportBufferHandle ExportBufferCreate(size_t capacity, size_t maxRegions)
     buffer->ReservedOffset.store(0, std::memory_order_relaxed);
     buffer->PublishedOffset = 0;
     buffer->MaxRanges = maxRegions;
-    buffer->Ranges = (Range*)malloc(sizeof(Range) * maxRegions);
+    buffer->Ranges = (RangeInt*)malloc(sizeof(RangeInt) * maxRegions);
     if (!buffer->Ranges) {
         goto failed;
     }
@@ -53,7 +56,7 @@ ExportBufferHandle ExportBufferCreate(size_t capacity, size_t maxRegions)
     for (size_t i = 0; i < maxRegions; ++i)
     {
         buffer->Ranges[i].Published.store(true, std::memory_order_relaxed);
-        buffer->Ranges[i].Offset = 0;
+        buffer->Ranges[i].Ptr = NULL;
         buffer->Ranges[i].Size = 0;
     }
     buffer->NextRegionIndex = 0;
@@ -83,7 +86,7 @@ static PJD_INLINE uint8_t* ExportBufferMemory(ExportBuffer* buffer)
     return buffer->Memory;
 }
 
-void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t* outOffset, Range** outRegion)
+const Range* ExportBufferReserve(ExportBufferHandle buffer, size_t size)
 {
     if (buffer == NULL || size == 0) {
         return NULL;
@@ -103,70 +106,78 @@ void* ExportBufferReserve(ExportBufferHandle buffer, size_t size, size_t* outOff
 
         const size_t newOffset = currentOffset + size;
 
-        if (std::atomic_compare_exchange_weak_explicit(
-                &buffer->ReservedOffset,
-                &currentOffset, 
-                newOffset, 
-                std::memory_order_acq_rel, 
-                std::memory_order_relaxed)) 
+        // CAS allocate space in backing memory, loop till fitting range was found
+        if (!std::atomic_compare_exchange_weak_explicit(&buffer->ReservedOffset, &currentOffset,
+            newOffset, std::memory_order_acq_rel, std::memory_order_relaxed)) 
         {
-            EnterCriticalSection(&buffer->RangeLock);
-            // assign a range slot
-            size_t rangeIndex = std::atomic_fetch_add_explicit(&buffer->NextRegionIndex, 1, std::memory_order_relaxed);
-            assert(rangeIndex < buffer->MaxRanges);
-
-            Range* range = &buffer->Ranges[rangeIndex % buffer->MaxRanges];
-            range->Offset = currentOffset;
-            range->Size = size;
-            range->Published.store(false, std::memory_order_relaxed);
-
-            if (outOffset) *outOffset = currentOffset;
-            if (outRegion) *outRegion = range;
-            LeaveCriticalSection(&buffer->RangeLock);
-
-            return &buffer->Memory[currentOffset];
+            continue;
         }
+
+        //EnterCriticalSection(&buffer->RangeLock);
+
+        // allocate a slot for the new range
+        size_t rangeIndex = std::atomic_fetch_add_explicit(&buffer->NextRegionIndex, 1, std::memory_order_relaxed);
+        if (rangeIndex >= buffer->MaxRanges) 
+        {
+            //LeaveCriticalSection(&buffer->RangeLock);
+            return NULL;
+        }
+
+        RangeInt* range = &buffer->Ranges[rangeIndex];
+        range->Ptr = &buffer->Memory[currentOffset];
+        range->Size = size;
+        range->Published.store(false, std::memory_order_relaxed);
+
+       // LeaveCriticalSection(&buffer->RangeLock);
+
+        return range;
     }
 }
 
-void ExportBufferPublish(ExportBufferHandle buffer, Range* range)
+void ExportBufferPublish(ExportBufferHandle buffer, const Range* range)
 {
     assert(buffer && range);
-    
-    range->Published.store(true, std::memory_order_release);
+    ((RangeInt*)range)->Published.store(true, std::memory_order_release);
 }
 
-size_t ExportBufferUsed(ExportBufferHandle buffer)
+Range ExportBufferReadPublished(ExportBufferHandle buffer)
 {
     if (!buffer) {
-        return 0;
+        return Range{ NULL, 0 };
     }
 
-    size_t idx = buffer->PublishedRegionIndex;
+    size_t idx       = buffer->PublishedRegionIndex;
     size_t published = buffer->PublishedOffset;
 
-    while (idx != buffer->NextRegionIndex.load(std::memory_order_acquire))
+    const size_t next = buffer->NextRegionIndex.load(std::memory_order_acquire);
+
+    while (idx != next)
     {
-        Range* range = &buffer->Ranges[idx % buffer->MaxRanges];
+        RangeInt* range = &buffer->Ranges[idx];
+
         if (!range->Published.load(std::memory_order_acquire)) {
             break;
         }
 
         published += range->Size;
-        idx++;
+        ++idx;
     }
+
+    size_t publishedRangeSize = published - buffer->PublishedOffset;
+
+    if (publishedRangeSize == 0) {
+        return Range{ NULL, 0 };
+    }
+
+    Range result = {
+        .Ptr = &buffer->Memory[buffer->PublishedOffset],
+        .Size = publishedRangeSize
+    };
+
     buffer->PublishedRegionIndex = idx;
     buffer->PublishedOffset = published;
 
-    return published;
-}
-
-void* ExportBufferData(ExportBufferHandle buffer)
-{
-    if (!buffer) {
-        return NULL;
-    }
-    return ExportBufferMemory(buffer);
+    return result;
 }
 
 size_t ExportBufferCapacity(ExportBufferHandle buffer)
@@ -177,9 +188,13 @@ size_t ExportBufferCapacity(ExportBufferHandle buffer)
     return buffer->Capacity;
 }
 
-void ExportBufferReset(ExportBufferHandle buffer)
+void ExportBufferReset(ExportBufferHandle buffer, bool forceFlush)
 {
     if (buffer == NULL) {
+        return;
+    }
+
+    if (!forceFlush && ((buffer->ReservedOffset / (float)buffer->Capacity) < 0.75f)) {
         return;
     }
 
@@ -187,4 +202,97 @@ void ExportBufferReset(ExportBufferHandle buffer)
     buffer->NextRegionIndex.store(0, std::memory_order_relaxed);
     buffer->PublishedOffset = 0;
     buffer->PublishedRegionIndex = 0;
+}
+
+void DebugDrawExportBufferBuckets(ExportBufferHandle buffer, int x, int y, int width, int height)
+{
+    if (!buffer) return;
+
+    RasterMode2D(true);
+
+    // --- Stats Overlay ---
+    size_t reserved = buffer->ReservedOffset.load(std::memory_order_acquire);
+    size_t published = buffer->PublishedOffset;
+    size_t maxRanges = buffer->MaxRanges;
+    size_t nextIndex = buffer->NextRegionIndex.load(std::memory_order_acquire);
+    size_t pubIndex = buffer->PublishedRegionIndex;
+
+    // Count published/reserved/unused regions
+    size_t publishedRegions = 0;
+    size_t reservedRegions = 0;
+    for (size_t i = 0; i < nextIndex; ++i)
+    {
+        if (buffer->Ranges[i].Published.load(std::memory_order_acquire))
+            publishedRegions++;
+        else
+            reservedRegions++;
+    }
+    size_t unusedRegions = maxRanges - nextIndex;
+
+    int line = 0;
+    WriteString(Format("Buffer Capacity: %.2f MB", buffer->Capacity / 1024.0f / 1024.0f), x, y + line * 16); line++;
+    WriteString(Format("Reserved: %.2f MB (%.1f%%)", reserved / 1024.0f / 1024.0f, (float)reserved / buffer->Capacity * 100.0f), x, y + line * 16); line++;
+    WriteString(Format("Published: %.2f MB (%.1f%%)", published / 1024.0f / 1024.0f, (float)published / buffer->Capacity * 100.0f), x, y + line * 16); line++;
+    WriteString(Format("Regions: %zu/%zu (Published: %zu, Reserved: %zu, Unused: %zu)", nextIndex, maxRanges, publishedRegions, reservedRegions, unusedRegions), x, y + line * 16); line++;
+
+    if (nextIndex > 0)
+    {
+        float avgSize = (float)reserved / nextIndex;
+        WriteString(Format("Average Range Size: %.1f bytes", avgSize), x, y + line * 16); line++;
+    }
+
+    // --- Memory Usage Bar ---
+    int barHeight = 16;
+    int barY = y + line * 16 + 4;
+    DrawRectangle(x, barY, width, barHeight, COLOR(0.1f, 0.1f, 0.1f), SOLID_FILL);
+
+    int reservedW = (int)((float)reserved / buffer->Capacity * width);
+    int publishedW = (int)((float)published / buffer->Capacity * width);
+
+    DrawRectangle(x, barY, reservedW, barHeight, COLOR(1.0f, 1.0f, 0.0f), SOLID_FILL); 
+    DrawRectangle(x, barY, publishedW, barHeight, COLOR(0.0f, 1.0f, 0.0f), SOLID_FILL);
+
+    // --- Compressed Region Queue ---
+    int regionBarY = barY + barHeight + 8;
+    int regionBarH = 50;
+    const size_t bucketCount = width;
+    const size_t regionsPerBucket = (maxRanges + bucketCount - 1) / bucketCount;
+
+    for (size_t b = 0; b < bucketCount; ++b)
+    {
+        size_t startIdx = b * regionsPerBucket;
+        size_t endIdx = startIdx + regionsPerBucket;
+        if (endIdx > maxRanges) endIdx = maxRanges;
+
+        size_t pub = 0, res = 0, unused = 0;
+        for (size_t i = startIdx; i < endIdx; ++i)
+        {
+            if (i < nextIndex)
+            {
+                RangeInt& r = buffer->Ranges[i];
+                if (r.Published.load(std::memory_order_acquire)) pub++;
+                else res++;
+            }
+            else unused++;
+        }
+
+        int y0 = regionBarY;
+        if (pub)
+        {
+            int h = (int)((float)pub / regionsPerBucket * regionBarH);
+            DrawLine(x + (int)b, y0, x + (int)b, y0 + h, COLOR(0.0f, 1.0f, 0.0f));
+            y0 += h;
+        }
+        if (res)
+        {
+            int h = (int)((float)res / regionsPerBucket * regionBarH);
+            DrawLine(x + (int)b, y0, x + (int)b, y0 + h, COLOR(1.0f, 1.0f, 0.0f));
+            y0 += h;
+        }
+        if (unused)
+        {
+            int h = regionBarH - (y0 - regionBarY);
+            if (h > 0) DrawLine(x + (int)b, y0, x + (int)b, y0 + h, COLOR(0.25f, 0.25f, 0.25f));
+        }
+    }
 }
