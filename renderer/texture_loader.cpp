@@ -127,7 +127,6 @@ void WriteToTgaFile(const char* filename, uint32_t width, uint32_t height, uint8
     {
         uint8_t pixel[4];
         memcpy(pixel, &dataRGRA[i * dataChannels], dataChannels);
-        uint8_t tmp = pixel[0]; pixel[0] = pixel[2]; pixel[2] = tmp;
         for (uint32_t b = 0; b < fileChannels; b++)
         {
             fputc(pixel[b % dataChannels], fp);
