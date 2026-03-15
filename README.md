@@ -29,4 +29,10 @@ Designed to explore low-level rendering pipelines, CPU rasterization, and tiled 
   <a href="pictures/test_scene_2.jpg">
     <img src="pictures/test_scene_2.jpg" width="49%" />
   </a>
+  <a href="pictures/test_scene_1.jpg">
+    <img src="pictures/test_scene_3.jpg" width="49%" />
+  </a>
+  <a href="pictures/test_scene_2.jpg">
+    <img src="pictures/test_scene_4.jpg" width="49%" />
+  </a>
 </p>
