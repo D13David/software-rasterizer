@@ -61,6 +61,7 @@ typedef struct RasterContext
     TextureFilter   Filter;
     TextureView     Texture;
     DrawMode        DrawMode;
+    bool            DepthWriteEnabled;
 #if PJD_DEBUG_VIEW_ENABLED
     DebugMode       DebugMode;
 #endif
@@ -115,9 +116,9 @@ extern ScreenTile            Tiles[MAX_TILES];
 extern vec2i                 TileIndexToCoord[TILE_WIDTH * TILE_HEIGHT];
 extern int                   CoordToTileIndex[TILE_WIDTH][TILE_HEIGHT];
 
-static PJD_INLINE int Edge(int x0, int y0, int x1, int y1, int x2, int y2)
+static PJD_INLINE int Edge(int x0, int y0, int x1, int y1, int x, int y)
 {
-    return (y2 - y0) * (x1 - x0) - (x2 - x0) * (y1 - y0);
+    return (y - y0) * (x1 - x0) - (x - x0) * (y1 - y0);
 }
 
 static PJD_INLINE void ComputeAABB(int x0, int y0, int x1, int y1, int x2, int y2, vec4i out)

@@ -31,6 +31,8 @@ void RasterizerInitialize(const RasterizerDesc& init)
     Ctx.DebugMode = DM_None;
 #endif
 
+    Ctx.DepthWriteEnabled = true;
+
     Ctx.PixelShader = &ShadePixelDefault;
 
     SYSTEM_INFO systemInfo;
@@ -86,6 +88,11 @@ void SetTextureView(TextureView texture)
 void SetDrawMode(DrawMode drawMode)
 {
     Ctx.DrawMode = drawMode;
+}
+
+void SetDepthWrite(bool enabled)
+{
+    Ctx.DepthWriteEnabled = enabled;
 }
 
 #if PJD_DEBUG_VIEW_ENABLED

@@ -192,7 +192,9 @@ static PJD_INLINE void RasterizeQuad(int x, int y, float mipLevel, const Interpo
 #endif
         if (I(i,z) < depthBuffer[index])
         {
-            depthBuffer[index] = I(i,z);
+            if (Ctx.DepthWriteEnabled) {
+                depthBuffer[index] = I(i, z);
+            }
 
             WriteFramebufferDirect(index, ShadePixel(mipLevel, &interpolants[i] DEBUG_VIEW_ONLY_ARG(params)));
         }

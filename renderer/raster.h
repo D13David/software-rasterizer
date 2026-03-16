@@ -25,6 +25,7 @@ void RasterizerDestroy();
 void SetTextureFilter(TextureFilter filter);
 void SetTextureView(TextureView texture);
 void SetDrawMode(DrawMode drawMode);
+void SetDepthWrite(bool enabled);
 #if PJD_DEBUG_VIEW_ENABLED
 void SetDebugMode(DebugMode mode);
 #endif
