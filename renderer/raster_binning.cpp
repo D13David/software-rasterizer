@@ -83,13 +83,13 @@ static void RunTriangleBinning_(size_t id, int indexStart, int indexEnd, void* c
         const ExportVertex& v1 = transformedVertices[i * 3 + 1];
         const ExportVertex& v2 = transformedVertices[i * 3 + 2];
 
-        int x0 = v0.ScreenX, y0 = v0.ScreenY;
-        int x1 = v1.ScreenX, y1 = v1.ScreenY;
-        int x2 = v2.ScreenX, y2 = v2.ScreenY;
+        int x0 = TO_FP28_4(v0.ScreenX), y0 = TO_FP28_4(v0.ScreenY);
+        int x1 = TO_FP28_4(v1.ScreenX), y1 = TO_FP28_4(v1.ScreenY);
+        int x2 = TO_FP28_4(v2.ScreenX), y2 = TO_FP28_4(v2.ScreenY);
 
         // triangle is backface culled
         int area = Edge(x0, y0, x1, y1, x2, y2);
-        if (area < 0) {
+        if (area <= 0) {
             continue;
         }
 

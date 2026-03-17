@@ -245,8 +245,8 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
 
 #define EXPORT_VERTEX(idx, vert) do {                                   \
         float invW = vert.ClipSpacePos[3];                              \
-        exportVertexPtr[(idx)].ScreenX = (int)vert.ClipSpacePos[0];     \
-        exportVertexPtr[(idx)].ScreenY = (int)vert.ClipSpacePos[1];     \
+        exportVertexPtr[(idx)].ScreenX = vert.ClipSpacePos[0];          \
+        exportVertexPtr[(idx)].ScreenY = vert.ClipSpacePos[1];          \
         exportVertexPtr[(idx)].InvW    = invW;                          \
         exportVertexPtr[(idx)].Z       = vert.ClipSpacePos[2];          \
         exportVertexPtr[(idx)].UOverW  = vert.TexCoords[0] * invW;      \

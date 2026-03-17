@@ -75,7 +75,7 @@ typedef struct ScreenTile
 
 typedef struct PJD_ALIGN(64) ExportVertex
 {
-    uint16_t ScreenX, ScreenY; //           4 byte
+    float ScreenX, ScreenY;    //           4 byte
     float Z;                   // z         4 byte
     float InvW;                // 1 / w     4 byte
     float UOverW;              // u / w     4 byte
@@ -109,6 +109,12 @@ typedef struct DebugParams
 #define DEBUG_VIEW_ONLY_ARG(...)
 #endif
 
+// 24:8 fixed point
+constexpr int SUBPIXEL_BITS = 4;
+constexpr int SUBPIXEL_SCALE = 1 << SUBPIXEL_BITS;
+
+#define TO_FP28_4(v) (int)(roundf((v) * SUBPIXEL_SCALE))
+
 extern struct ThreadPool*    ThreadPool;
 extern RasterContext         Ctx;
 extern struct ExportBuffer*  ExportBuffer;
@@ -118,25 +124,27 @@ extern int                   CoordToTileIndex[TILE_WIDTH][TILE_HEIGHT];
 
 static PJD_INLINE int Edge(int x0, int y0, int x1, int y1, int x, int y)
 {
-    return (y - y0) * (x1 - x0) - (x - x0) * (y1 - y0);
+    return ((y - y0) * (x1 - x0)) - ((x - x0) * (y1 - y0));
 }
 
 static PJD_INLINE void ComputeAABB(int x0, int y0, int x1, int y1, int x2, int y2, vec4i out)
 {
-    int minx = min(min(x0, x1), x2);
-    int maxx = max(max(x0, x1), x2);
-    int miny = min(min(y0, y1), y2);
-    int maxy = max(max(y0, y1), y2);
+    int minx = min3(x0, x1, x2);
+    int maxx = max3(x0, x1, x2);
+    int miny = min3(y0, y1, y2);
+    int maxy = max3(y0, y1, y2);
 
-    // Floor min to nearest multiple of 2, clamp to framebuffer
-    int xmin = max(minx & ~1, 0);
-    int ymin = max(miny & ~1, 0);
+    int minxp = minx >> SUBPIXEL_BITS;
+    int minyp = miny >> SUBPIXEL_BITS;
+    int maxxp = (maxx + SUBPIXEL_SCALE - 1) >> SUBPIXEL_BITS;
+    int maxyp = (maxy + SUBPIXEL_SCALE - 1) >> SUBPIXEL_BITS;
 
-    // Ceil max to nearest multiple of 2, clamp to framebuffer
-    int xmax = min((maxx + 1) & ~1, FB_WIDTH - 1);
-    int ymax = min((maxy + 1) & ~1, FB_HEIGHT - 1);
+    int xmin = max(minxp & ~1, 0);
+    int ymin = max(minyp & ~1, 0);
 
-    // Output
+    int xmax = min((maxxp + 1) & ~1, FB_WIDTH - 1);
+    int ymax = min((maxyp + 1) & ~1, FB_HEIGHT - 1);
+
     out[0] = xmin;
     out[1] = ymin;
     out[2] = xmax;

@@ -201,32 +201,43 @@ static PJD_INLINE void RasterizeQuad(int x, int y, float mipLevel, const Interpo
     }
 }
 
-template<bool fullyCovered>
-static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2, vec4i bounds, float invArea, int tileIndex)
+static int EdgeBias(int x1, int y1, int x2, int y2)
 {
-    int x0 = v0->ScreenX, y0 = v0->ScreenY;
-    int x1 = v1->ScreenX, y1 = v1->ScreenY;
-    int x2 = v2->ScreenX, y2 = v2->ScreenY;
+    return -((y1 < y2) || (y1 == y2 && x1 > x2));
+}
 
-    int A01 = y0 - y1, B01 = x1 - x0;
-    int A12 = y1 - y2, B12 = x2 - x1;
-    int A20 = y2 - y0, B20 = x0 - x2;
+template<bool fullyCovered>
+static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2, vec4i bounds, int tileIndex)
+{
+    int x0 = TO_FP28_4(v0->ScreenX), y0 = TO_FP28_4(v0->ScreenY);
+    int x1 = TO_FP28_4(v1->ScreenX), y1 = TO_FP28_4(v1->ScreenY);
+    int x2 = TO_FP28_4(v2->ScreenX), y2 = TO_FP28_4(v2->ScreenY);
 
-    int cy0 = Edge(x1, y1, x2, y2, bounds[0], bounds[1]);
-    int cy1 = Edge(x2, y2, x0, y0, bounds[0], bounds[1]);
-    int cy2 = Edge(x0, y0, x1, y1, bounds[0], bounds[1]);
+    int A01 = (y0 - y1)*SUBPIXEL_SCALE, B01 = (x1 - x0)*SUBPIXEL_SCALE;
+    int A12 = (y1 - y2)*SUBPIXEL_SCALE, B12 = (x2 - x1)*SUBPIXEL_SCALE;
+    int A20 = (y2 - y0)*SUBPIXEL_SCALE, B20 = (x0 - x2)*SUBPIXEL_SCALE;
+
+    // (minx+0.5, miny+0.5)
+    int startX = (bounds[0] << SUBPIXEL_BITS) + (SUBPIXEL_SCALE >> 1);
+    int startY = (bounds[1] << SUBPIXEL_BITS) + (SUBPIXEL_SCALE >> 1);
+
+    int cy0 = Edge(x1, y1, x2, y2, startX, startY) + EdgeBias(x1, y1, x2, y2);
+    int cy1 = Edge(x2, y2, x0, y0, startX, startY) + EdgeBias(x2, y2, x0, y0);
+    int cy2 = Edge(x0, y0, x1, y1, startX, startY) + EdgeBias(x0, y0, x1, y1);
 
     int tileOffset = tileIndex * (TILE_WIDTH * TILE_HEIGHT);
     int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
     int tileMinY = (tileIndex / TILE_COUNT_X) * TILE_HEIGHT;
 
-    for (int y = bounds[1]; y <= bounds[3]; y += 2)
+    float invArea = 1.0f / Edge(x0, y0, x1, y1, x2, y2);
+
+    for (int y = bounds[1]; y < bounds[3]; y += 2)
     {
         int cx0Row = cy0;
         int cx1Row = cy1;
         int cx2Row = cy2;
 
-        for (int x = bounds[0]; x <= bounds[2]; x += 2)
+        for (int x = bounds[0]; x < bounds[2]; x += 2)
         {
             Interpolants interpolants[4];
 
@@ -301,24 +312,15 @@ static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const Expor
 
 static void DrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const ExportVertex* v2, int tileIndex)
 {
-    int x0 = v0->ScreenX, y0 = v0->ScreenY;
-    int x1 = v1->ScreenX, y1 = v1->ScreenY;
-    int x2 = v2->ScreenX, y2 = v2->ScreenY;
-
-    int area = Edge(x0, y0, x1, y1, x2, y2);
-
-    // reject zero area triangles. vertex transform exports zero area triangles for fully discarted triangles
-    if (area == 0) 
-    {
-        RENDER_STATS_ADD(ZeroAreaTris, 1);
-        return;
-    }
+    int x0 = TO_FP28_4(v0->ScreenX), y0 = TO_FP28_4(v0->ScreenY);
+    int x1 = TO_FP28_4(v1->ScreenX), y1 = TO_FP28_4(v1->ScreenY);
+    int x2 = TO_FP28_4(v2->ScreenX), y2 = TO_FP28_4(v2->ScreenY);
 
     // clamp bounds to screen tile
     int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
     int tileMinY = (tileIndex / TILE_COUNT_X) * TILE_HEIGHT;
-    int tileMaxX = min(tileMinX + TILE_WIDTH - 1, FB_WIDTH - 1);
-    int tileMaxY = min(tileMinY + TILE_HEIGHT - 1, FB_HEIGHT - 1);
+    int tileMaxX = tileMinX + TILE_WIDTH;
+    int tileMaxY = tileMinY + TILE_HEIGHT;
 
     int edges[3][3] = {
         {y1 - y2, x2 - x1, x1 * y2 - y1 * x2},
@@ -326,7 +328,7 @@ static void DrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const E
         {y0 - y1, x1 - x0, x0 * y1 - y0 * x1}
     };
 
-    TileCoverage coverage = ClassifyTile(tileMinX, tileMinY, tileMaxX, tileMaxY, edges);
+    TileCoverage coverage = ClassifyTile(tileMinX << SUBPIXEL_BITS, tileMinY << SUBPIXEL_BITS, tileMaxX << SUBPIXEL_BITS, tileMaxY << SUBPIXEL_BITS, edges);
 
 #if DEBUG_TILE_CLASSIFICATION
     TouchTile(tileIndex, coverage);
@@ -349,12 +351,12 @@ static void DrawTriangle(const ExportVertex* v0, const ExportVertex* v1, const E
     if (coverage == TileFullCoverage)
     {
         RENDER_STATS_ADD(TilesFull, 1);
-        RasterizeQuadLinearEdgeIncrement<true>(v0, v1, v2, bounds, 1.0f / area, tileIndex);
+        RasterizeQuadLinearEdgeIncrement<true>(v0, v1, v2, bounds, tileIndex);
     }
     else
     {
         RENDER_STATS_ADD(TilesPartial, 1);
-        RasterizeQuadLinearEdgeIncrement<false>(v0, v1, v2, bounds, 1.0f / area, tileIndex);
+        RasterizeQuadLinearEdgeIncrement<false>(v0, v1, v2, bounds, tileIndex);
     }
 }
 
