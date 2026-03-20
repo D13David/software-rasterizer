@@ -25,7 +25,7 @@ PJD_INLINE void SinCos(float value, float* s, float* c)
 
 PJD_INLINE float Clamp(float value, float min, float max)
 {
-    return fminf(fmaxf(value, min), max);
+    return min(max(value, min), max);
 }
 
 PJD_INLINE float Saturate(float value)

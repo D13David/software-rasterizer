@@ -85,8 +85,8 @@ static rgba8 DebugViewScreenSpaceDerivatives(float dudx, float dudy, float dvdx,
     const float maxDeriv = 1.0f / 0.05f;
     float magU = sqrt(dudx * dudx + dudy * dudy);
     float magV = sqrt(dvdx * dvdx + dvdy * dvdy);
-    float r = fmin(magU * maxDeriv, 1.0f);
-    float g = fmin(magV * maxDeriv, 1.0f);
+    float r = min(magU * maxDeriv, 1.0f);
+    float g = min(magV * maxDeriv, 1.0f);
     return COLOR(r, g, 0.0f);
 }
 #endif
@@ -281,7 +281,7 @@ static void RasterizeQuadLinearEdgeIncrement(const ExportVertex* v0, const Expor
             float dvdx2 = dvdx * dvdx;
             float dvdy2 = dvdy * dvdy;
 
-            float rho2 = fmaxf(dudx2 + dvdx2, dudy2 + dvdy2);
+            float rho2 = max(dudx2 + dvdx2, dudy2 + dvdy2);
             float mipLevel = 0.5f * Log2Fast(rho2 * Ctx.Texture.Width * Ctx.Texture.Width);
             mipLevel = Clamp(mipLevel, 0.0f, (float)Ctx.Texture.MipLevels - 1);
 
