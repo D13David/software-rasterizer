@@ -40,10 +40,20 @@ using AtomicInt = std::atomic<int>;
 #define TILE_WIDTH          64
 #define TILE_HEIGHT         16
 #endif // ENABLE_TILED_FRAMEBUFFER_LAYOUT
+
+#define MAX_TRIS_PER_TILE   1024
+
+// micro tile definition
+#define MAX_TILES           ((1920 / TILE_WIDTH) * (1080 / TILE_HEIGHT))
 #define TILE_COUNT_X        (FB_WIDTH / TILE_WIDTH)
 #define TILE_COUNT_Y        (FB_HEIGHT / TILE_HEIGHT)
-#define MAX_TRIS_PER_TILE   1024*128
-#define MAX_TILES           ((1920 / TILE_WIDTH) * (1080 / TILE_HEIGHT))
+
+// macro tile definition
+#define MACRO_TILE_WIDTH    (TILE_WIDTH*8)
+#define MACRO_TILE_HEIGHT   (TILE_HEIGHT*8)
+#define MAX_MACRO_TILES     ((1920 / MACRO_TILE_WIDTH) * (1080 / MACRO_TILE_HEIGHT))
+#define MACRO_TILE_COUNT_X  (FB_WIDTH / MACRO_TILE_WIDTH)
+#define MACRO_TILE_COUNT_Y  (FB_HEIGHT / MACRO_TILE_HEIGHT)
 
 #define THREAD_GROUP_SIZE_BINNING      32
 #define THREAD_GROUP_SIZE_VTRANSFORM  128
@@ -118,7 +128,8 @@ constexpr int SUBPIXEL_SCALE = 1 << SUBPIXEL_BITS;
 extern struct ThreadPool*    ThreadPool;
 extern RasterContext         Ctx;
 extern struct ExportBuffer*  ExportBuffer;
-extern ScreenTile            Tiles[MAX_TILES];
+extern ScreenTile            TileBins[MAX_TILES];
+extern ScreenTile            MacroTileBins[MAX_MACRO_TILES];
 extern vec2i                 TileIndexToCoord[TILE_WIDTH * TILE_HEIGHT];
 extern int                   CoordToTileIndex[TILE_WIDTH][TILE_HEIGHT];
 

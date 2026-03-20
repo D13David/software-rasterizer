@@ -366,7 +366,7 @@ static void RunRasterizeTriangles_(size_t id, int tileIndexStart, int tileIndexE
 
     for (int i = tileIndexStart; i < tileIndexEnd; ++i)
     {
-        ScreenTile* tile = &Tiles[i];
+        ScreenTile* tile = &TileBins[i];
 
         for (int j = 0; j < tile->NumTriangles; ++j)
         {

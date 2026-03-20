@@ -63,15 +63,25 @@ void RasterizerInitialize(const RasterizerDesc& init)
         }
     }
 
+    // FIXME: use a scratchpad allocator to allocate number of binned triangles per tile buffers intead of 
+    //        using a maximum length for each
     int* tileBinningBuffer = (int*)malloc(MAX_TILES * MAX_TRIS_PER_TILE * sizeof(int));
     for (int i = 0; i < MAX_TILES; ++i) {
-        Tiles[i].BinnedTriangles = &tileBinningBuffer[i * MAX_TRIS_PER_TILE];
+        TileBins[i].BinnedTriangles = &tileBinningBuffer[i * MAX_TRIS_PER_TILE];
+        TileBins[i].NumTriangles = 0;
     }   
+
+    tileBinningBuffer = (int*)malloc(MAX_MACRO_TILES * MAX_TRIS_PER_TILE * sizeof(int));
+    for (int i = 0; i < MAX_MACRO_TILES; ++i) {
+        MacroTileBins[i].BinnedTriangles = &tileBinningBuffer[i * MAX_TRIS_PER_TILE];
+        MacroTileBins[i].NumTriangles = 0;
+    }
 }
 
 void RasterizerDestroy()
 {
-    free(Tiles[0].BinnedTriangles);
+    free(TileBins[0].BinnedTriangles);
+    free(MacroTileBins[0].BinnedTriangles);
     ThreadPoolDestroy(ThreadPool, ShutdownMode::IMMEDIATE);
 }
 
