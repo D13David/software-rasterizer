@@ -16,6 +16,11 @@
 #define max3(a,b,c) (((a) > (b) ? (a) : (b)) > (c) ? ((a) > (b) ? (a) : (b)) : (c))
 #define min3(a,b,c) (((a) < (b) ? (a) : (b)) < (c) ? ((a) < (b) ? (a) : (b)) : (c))
 
+PJD_INLINE int Align(int value, int alignment)
+{
+    return (value + alignment - 1) & ~(alignment - 1);
+}
+
 PJD_INLINE void SinCos(float value, float* s, float* c)
 {
     assert(s != NULL && c != NULL);

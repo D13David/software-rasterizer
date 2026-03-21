@@ -16,6 +16,43 @@ int                 CoordToTileIndex[TILE_WIDTH][TILE_HEIGHT];
 static uint32_t*    ColorBuffer[2];
 static int          Frame;
 
+static BOOL SetLargePagePrivilege()
+{
+    BOOL ret = TRUE;
+    HANDLE hToken = INVALID_HANDLE_VALUE;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
+        goto fail;
+    }
+
+    TOKEN_PRIVILEGES tp;
+    LUID luid;
+
+    if (!LookupPrivilegeValue(NULL, L"SeLockMemoryPrivilege", &luid)) {
+        goto fail;
+    }
+
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Luid = luid;
+    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+    if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL)) {
+        goto fail;
+    }
+
+    if (GetLastError() == ERROR_NOT_ALL_ASSIGNED) {
+        goto fail;
+    }
+
+    goto cleanup;
+
+fail:
+    ret = FALSE;
+cleanup:
+    if (hToken != INVALID_HANDLE_VALUE) CloseHandle(hToken);
+
+    return ret;
+}
+
 void RasterizerInitialize(const RasterizerDesc& init)
 {
     assert(init.FrameBufferPtr != NULL);
@@ -63,15 +100,20 @@ void RasterizerInitialize(const RasterizerDesc& init)
         }
     }
 
+    SetLargePagePrivilege();
+
+    SIZE_T largePageMinimum = GetLargePageMinimum();
+    int size = Align(MAX_TILES * MAX_TRIS_PER_TILE * sizeof(int), largePageMinimum);
+
     // FIXME: use a scratchpad allocator to allocate number of binned triangles per tile buffers intead of 
     //        using a maximum length for each
-    int* tileBinningBuffer = (int*)malloc(MAX_TILES * MAX_TRIS_PER_TILE * sizeof(int));
+    int* tileBinningBuffer = (int*)VirtualAlloc(NULL, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
     for (int i = 0; i < MAX_TILES; ++i) {
         TileBins[i].BinnedTriangles = &tileBinningBuffer[i * MAX_TRIS_PER_TILE];
         TileBins[i].NumTriangles = 0;
-    }   
+    }
 
-    tileBinningBuffer = (int*)malloc(MAX_MACRO_TILES * MAX_TRIS_PER_TILE * sizeof(int));
+    tileBinningBuffer = (int*)VirtualAlloc(NULL, MAX_MACRO_TILES * MAX_TRIS_PER_TILE * sizeof(int), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     for (int i = 0; i < MAX_MACRO_TILES; ++i) {
         MacroTileBins[i].BinnedTriangles = &tileBinningBuffer[i * MAX_TRIS_PER_TILE];
         MacroTileBins[i].NumTriangles = 0;
@@ -80,8 +122,8 @@ void RasterizerInitialize(const RasterizerDesc& init)
 
 void RasterizerDestroy()
 {
-    free(TileBins[0].BinnedTriangles);
-    free(MacroTileBins[0].BinnedTriangles);
+    VirtualFree(TileBins[0].BinnedTriangles, 0, MEM_RELEASE);
+    VirtualFree(MacroTileBins[0].BinnedTriangles, 0, MEM_RELEASE);
     ThreadPoolDestroy(ThreadPool, ShutdownMode::IMMEDIATE);
 }
 
