@@ -297,17 +297,30 @@ static void ResolveTiledFrameBuffer(size_t id, int startTile, int endTile, void*
 
     rgba8* outCB = (rgba8*)Ctx.Out.CB;
     const uint32_t* TileBuffer = ColorBuffer[Frame] + startTile * PixelsPerTile;
+    const uint32_t* TileBufferEnd = &ColorBuffer[Frame][FB_WIDTH*FB_HEIGHT];
 
     for (int tileIndex = startTile; tileIndex < endTile; ++tileIndex)
     {
         int tileOriginX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
         int tileOriginY = (tileIndex / TILE_COUNT_X) * TILE_HEIGHT;
 
+        uint32_t scratch[TILE_WIDTH * TILE_HEIGHT];
+
         for (int pos = 0; pos < PixelsPerTile; ++pos)
         {
-            int px = tileOriginX + TileIndexToCoord[pos][0];
-            int py = tileOriginY + TileIndexToCoord[pos][1];
-            outCB[py * FB_WIDTH + px] = TileBuffer[pos];
+            int x, y;
+            Decode6BitMorton(pos, &x, &y);
+            scratch[y * TILE_WIDTH + x] = ((TileBuffer + pos) < TileBufferEnd) ? TileBuffer[pos] : 0;
+        }
+
+        int tileHeight = min(tileOriginY + TILE_HEIGHT, FB_HEIGHT - 1) - tileOriginY;
+        int tileWidth = min(tileOriginX + TILE_WIDTH, FB_WIDTH - 1) - tileOriginX;
+        for (int y = 0; y < tileHeight; ++y)
+        {
+            memcpy(
+                &outCB[(tileOriginY + y) * FB_WIDTH + tileOriginX],
+                &scratch[y * TILE_WIDTH],
+                tileWidth * sizeof(uint32_t));
         }
 
         TileBuffer += PixelsPerTile;

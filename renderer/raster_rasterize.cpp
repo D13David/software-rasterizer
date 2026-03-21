@@ -190,7 +190,7 @@ static PJD_INLINE void RasterizeQuad(int x, int y, float mipLevel, const Interpo
 #else
         int index = I(i,py) * FB_WIDTH + I(i,px);
 #endif
-        if (I(i,z) < depthBuffer[index])
+        if (index < FB_WIDTH*FB_HEIGHT && I(i,z) < depthBuffer[index])
         {
             if (Ctx.DepthWriteEnabled) {
                 depthBuffer[index] = I(i, z);
