@@ -88,6 +88,9 @@
     <ClCompile Include="test_scenes\uarch_loader.cpp">
       <Filter>main\test_scenes</Filter>
     </ClCompile>
+    <ClCompile Include="common\task_system.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shared.h">
@@ -173,6 +176,9 @@
     </ClInclude>
     <ClInclude Include="test_scenes\uarch_loader.h">
       <Filter>main\test_scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="common\task_system.h">
+      <Filter>common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
