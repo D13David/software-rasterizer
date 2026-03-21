@@ -16,8 +16,9 @@ extern "C" {
 extern bool WireFrameOverlay;
 extern float DeltaTime;
 
-#define FB_WIDTH 1920
-#define FB_HEIGHT 1080
+#define PJD_FB_WIDTH 800
+#define PJD_FB_HEIGHT 600
+#define PJD_FULL_SCREEN TRUE
 
 #if __cplusplus
 }

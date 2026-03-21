@@ -69,7 +69,7 @@ static void HandleUserInput()
 
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
-    uint8_t* frameBuffer = Thirteen::Init(FB_WIDTH, FB_HEIGHT, false);
+    uint8_t* frameBuffer = Thirteen::Init(PJD_FB_WIDTH, PJD_FB_HEIGHT, PJD_FULL_SCREEN);
     Thirteen::SetVSync(false);
 
     ProfilerInitialize();
@@ -82,12 +82,12 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         }
     }
 
-    float* depthBuffer = (float*)_aligned_malloc(FB_WIDTH * FB_HEIGHT * sizeof(float), 32);
+    float* depthBuffer = (float*)_aligned_malloc(PJD_FB_WIDTH * PJD_FB_HEIGHT * sizeof(float), 32);
 
     RasterizerInitialize({
             .BufferDesc = {
-                .Width = FB_WIDTH,
-                .Height = FB_HEIGHT
+                .Width = PJD_FB_WIDTH,
+                .Height = PJD_FB_HEIGHT
             },
             .FrameBufferPtr = frameBuffer,
             .DepthBufferPtr = depthBuffer
@@ -135,9 +135,9 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         if (ShowPerformanceMetrics)
         {
             FPSMeterUpdate();
-            FPSMeterDraw(0, FB_HEIGHT - 100 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
+            FPSMeterDraw(0, PJD_FB_HEIGHT - 100 - FPS_METER_HEIGHT, FPS_METER_WIDTH, FPS_METER_HEIGHT);
 #if PJD_USE_RENDER_STATS
-            DrawRenderStats(FB_WIDTH - 200, 10);
+            DrawRenderStats(PJD_FB_WIDTH - 200, 10);
 #endif // PJD_USE_RENDER_STATS
         }
 
@@ -145,8 +145,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         {
             const int width = 300;
             const int height = 200;
-            int top = (FB_HEIGHT - height) / 2;
-            int left = (FB_WIDTH - width) / 2;
+            int top = (PJD_FB_HEIGHT - height) / 2;
+            int left = (PJD_FB_WIDTH - width) / 2;
             DrawRectangle(left, top, width, height, COLOR(0.4f, 0.4f, 0.4f), CLOSE_DOT_FILL);
 
             int offset = top + 5;

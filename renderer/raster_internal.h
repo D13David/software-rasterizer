@@ -30,8 +30,8 @@ using AtomicInt = std::atomic<int>;
 #   error "nope"
 #endif
 
-#define FB_WIDTH    Ctx.Out.Width
-#define FB_HEIGHT   Ctx.Out.Height
+#define PJD_FB_WIDTH    Ctx.Out.Width
+#define PJD_FB_HEIGHT   Ctx.Out.Height
 
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT
 #define TILE_WIDTH          16
@@ -47,15 +47,15 @@ using AtomicInt = std::atomic<int>;
 
 // micro tile definition
 #define MAX_TILES           (ROUND_UP_DIV_INT(1920, TILE_WIDTH) * ROUND_UP_DIV_INT(1080, TILE_HEIGHT))
-#define TILE_COUNT_X        ROUND_UP_DIV_INT(FB_WIDTH, TILE_WIDTH)
-#define TILE_COUNT_Y        ROUND_UP_DIV_INT(FB_HEIGHT, TILE_HEIGHT)
+#define TILE_COUNT_X        ROUND_UP_DIV_INT(PJD_FB_WIDTH, TILE_WIDTH)
+#define TILE_COUNT_Y        ROUND_UP_DIV_INT(PJD_FB_HEIGHT, TILE_HEIGHT)
 
 // macro tile definition
 #define MACRO_TILE_WIDTH    (TILE_WIDTH*8)
 #define MACRO_TILE_HEIGHT   (TILE_HEIGHT*8)
 #define MAX_MACRO_TILES     (ROUND_UP_DIV_INT(1920, MACRO_TILE_WIDTH) * ROUND_UP_DIV_INT(1080, MACRO_TILE_HEIGHT))
-#define MACRO_TILE_COUNT_X  ROUND_UP_DIV_INT(FB_WIDTH, MACRO_TILE_WIDTH)
-#define MACRO_TILE_COUNT_Y  ROUND_UP_DIV_INT(FB_HEIGHT, MACRO_TILE_HEIGHT)
+#define MACRO_TILE_COUNT_X  ROUND_UP_DIV_INT(PJD_FB_WIDTH, MACRO_TILE_WIDTH)
+#define MACRO_TILE_COUNT_Y  ROUND_UP_DIV_INT(PJD_FB_HEIGHT, MACRO_TILE_HEIGHT)
 
 #define THREAD_GROUP_SIZE_BINNING      32
 #define THREAD_GROUP_SIZE_VTRANSFORM  128
@@ -155,8 +155,8 @@ static PJD_INLINE void ComputeAABB(int x0, int y0, int x1, int y1, int x2, int y
     int xmin = max(minxp & ~1, 0);
     int ymin = max(minyp & ~1, 0);
 
-    int xmax = min((maxxp + 1) & ~1, FB_WIDTH - 1);
-    int ymax = min((maxyp + 1) & ~1, FB_HEIGHT - 1);
+    int xmax = min((maxxp + 1) & ~1, PJD_FB_WIDTH - 1);
+    int ymax = min((maxyp + 1) & ~1, PJD_FB_HEIGHT - 1);
 
     out[0] = xmin;
     out[1] = ymin;

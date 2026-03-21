@@ -77,7 +77,7 @@ static void DrawMesh(Mesh* mesh, float tx, float ty, float tz)
 
     //// projection
     mat4 ProjectionMat;
-    CreateMatrixPerspectiveFovLH(60.0f, FB_WIDTH / (float)FB_HEIGHT, 0.1f, 2000.0f, ProjectionMat);
+    CreateMatrixPerspectiveFovLH(60.0f, PJD_FB_WIDTH / (float)PJD_FB_HEIGHT, 0.1f, 2000.0f, ProjectionMat);
 
     // world view projection
     mat4 WorldViewProj;

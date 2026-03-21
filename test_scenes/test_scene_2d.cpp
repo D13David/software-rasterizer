@@ -55,9 +55,9 @@ void SceneRenderFrame()
 
 static bool FillEllipsePlay()
 {
-    int MaxRadius = FB_HEIGHT / 10;
+    int MaxRadius = PJD_FB_HEIGHT / 10;
 
-    DrawEllipse(RandomRange(0, FB_WIDTH - 1), RandomRange(0, FB_HEIGHT),
+    DrawEllipse(RandomRange(0, PJD_FB_WIDTH - 1), RandomRange(0, PJD_FB_HEIGHT),
         RandomRange(0, MaxRadius), RandomRange(0, MaxRadius),
         RandColor(), RandFillStyle());
 
@@ -68,16 +68,16 @@ static bool LineStylePlay()
 {
     int x = 35;
     int y = 10;
-    int step = (FB_WIDTH) / 11;
+    int step = (PJD_FB_WIDTH) / 11;
 
     for (int style = 0; style <= 3; ++style, x += step) {
-        DrawLine(x, y + 20, x, FB_HEIGHT - 80, COLOR(1, 1, 1), 1, (LineStyle)style);
+        DrawLine(x, y + 20, x, PJD_FB_HEIGHT - 80, COLOR(1, 1, 1), 1, (LineStyle)style);
     }
 
     x += 2 * step;
 
     for (int style = 0; style <= 3; ++style, x += step) {
-        DrawLine(x, y + 20, x, FB_HEIGHT - 80, COLOR(1, 1, 1), 3, (LineStyle)style);
+        DrawLine(x, y + 20, x, PJD_FB_HEIGHT - 80, COLOR(1, 1, 1), 3, (LineStyle)style);
     }
 
     return false;
@@ -86,9 +86,9 @@ static bool LineStylePlay()
 static bool RandBarPlay()
 {
     rgba8 color = RandColor();
-    int x = RandomRange(0, FB_WIDTH - 1);
-    int y = RandomRange(0, FB_WIDTH - 1);
-    DrawRectangle(x, y, RandomRange(0, FB_WIDTH - 1) - x, RandomRange(0, FB_HEIGHT - 1) - y, 
+    int x = RandomRange(0, PJD_FB_WIDTH - 1);
+    int y = RandomRange(0, PJD_FB_WIDTH - 1);
+    DrawRectangle(x, y, RandomRange(0, PJD_FB_WIDTH - 1) - x, RandomRange(0, PJD_FB_HEIGHT - 1) - y, 
         color, (FillStyle)RandomRange(EMPTY_FILL, CLOSE_DOT_FILL+1));
     return true;
 }
@@ -100,13 +100,13 @@ static bool BarPlay()
     const int BarStyles[] = { 1, 3, 10, 5, 9 };
     const int H = 15;
 
-    const int YStep = (FB_HEIGHT - (2 * H)) / NumBars;
-    const int XStep = (FB_WIDTH - (2 * H)) / NumBars;
+    const int YStep = (PJD_FB_HEIGHT - (2 * H)) / NumBars;
+    const int XStep = (PJD_FB_WIDTH - (2 * H)) / NumBars;
 
     int x = H;
     for (int i = 0; i < NumBars; ++i)
     {
-        DrawRectangle(x, FB_HEIGHT - H - (BarHeight[i] * YStep), XStep, (BarHeight[i] * YStep),
+        DrawRectangle(x, PJD_FB_HEIGHT - H - (BarHeight[i] * YStep), XStep, (BarHeight[i] * YStep),
             RandColor(), RandFillStyle());
 
         x += XStep;

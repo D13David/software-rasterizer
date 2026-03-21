@@ -227,7 +227,7 @@ static void HandleInput()
     CopyMatrix(ViewMatrix, WorldView);
 
     mat4 ProjectionMatrix;
-    CreateMatrixPerspectiveFovLH(60.0f, FB_WIDTH / (float)FB_HEIGHT, 10, 3000.0f, ProjectionMatrix);
+    CreateMatrixPerspectiveFovLH(60.0f, PJD_FB_WIDTH / (float)PJD_FB_HEIGHT, 10, 3000.0f, ProjectionMatrix);
 
     Matrix4Mul(WorldView, ProjectionMatrix, WorldViewProj);
 }

@@ -126,7 +126,7 @@ static void RunTriangleBinning_(size_t id, int indexStart, int indexEnd, void* c
             MacroTileBins,
             MACRO_TILE_COUNT_X,
             0, 0,
-            FB_WIDTH - 1, FB_HEIGHT - 1
+            PJD_FB_WIDTH - 1, PJD_FB_HEIGHT - 1
         );
     }
 }

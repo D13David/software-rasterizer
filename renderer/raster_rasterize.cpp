@@ -59,8 +59,8 @@ void DebugViewTileCoverage()
         int tileOffset = tileIndex * (TILE_WIDTH * TILE_HEIGHT);
         int tileMinX = (tileIndex % TILE_COUNT_X) * TILE_WIDTH;
         int tileMinY = (tileIndex / TILE_COUNT_X) * TILE_HEIGHT;
-        int tileMaxX = min(tileMinX + TILE_WIDTH - 1, FB_WIDTH - 1);
-        int tileMaxY = min(tileMinY + TILE_HEIGHT - 1, FB_HEIGHT - 1);
+        int tileMaxX = min(tileMinX + TILE_WIDTH - 1, PJD_FB_WIDTH - 1);
+        int tileMaxY = min(tileMinY + TILE_HEIGHT - 1, PJD_FB_HEIGHT - 1);
 
         if (Coverage[tileIndex] == 3) {
             continue;
@@ -188,9 +188,9 @@ static PJD_INLINE void RasterizeQuad(int x, int y, float mipLevel, const Interpo
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT
         int index = bufferOffset + CoordToTileIndex[y][x] + i;
 #else
-        int index = I(i,py) * FB_WIDTH + I(i,px);
+        int index = I(i,py) * PJD_FB_WIDTH + I(i,px);
 #endif
-        if (index < FB_WIDTH*FB_HEIGHT && I(i,z) < depthBuffer[index])
+        if (index < PJD_FB_WIDTH*PJD_FB_HEIGHT && I(i,z) < depthBuffer[index])
         {
             if (Ctx.DepthWriteEnabled) {
                 depthBuffer[index] = I(i, z);

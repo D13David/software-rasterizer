@@ -843,7 +843,7 @@ static void HandleInput()
 
     CreateMatrixLookAt(PlayerPos, target, up, ViewMatrix);
 
-    CreateMatrixPerspectiveFovLH(45.0f, FB_WIDTH / (float)FB_HEIGHT, 1, 700.0f, ProjectionMatrix);
+    CreateMatrixPerspectiveFovLH(45.0f, PJD_FB_WIDTH / (float)PJD_FB_HEIGHT, 1, 700.0f, ProjectionMatrix);
 }
 
 static rgba8 ShadePixelLM(float mipLevel, const Interpolants* interp)

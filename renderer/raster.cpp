@@ -170,7 +170,7 @@ void Clear(rgba8 color)
 {
     PROFILE_AUTO("Frame Buffer Clear");
 
-    int bufferSize = FB_WIDTH * FB_HEIGHT;
+    int bufferSize = PJD_FB_WIDTH * PJD_FB_HEIGHT;
 
     rgba8* colorBuffer = (rgba8*)ColorBuffer[Frame];
 
@@ -186,27 +186,27 @@ void Clear(rgba8 color)
 
 void WriteFramebufferDirect(int offset, rgba8 color)
 {
-    assert(offset < FB_WIDTH * FB_HEIGHT);
+    assert(offset < PJD_FB_WIDTH * PJD_FB_HEIGHT);
     ((rgba8*)ColorBuffer[Frame])[offset] = color;
 }
 
 void DrawPixel(int x, int y, rgba8 color)
 {
-    assert(x < FB_WIDTH && y < FB_HEIGHT);
+    assert(x < PJD_FB_WIDTH && y < PJD_FB_HEIGHT);
 #if ENABLE_TILED_FRAMEBUFFER_LAYOUT
     int tx = x / TILE_WIDTH;
     int ty = y / TILE_HEIGHT;
     int offset = ((ty * TILE_COUNT_X + tx) * (TILE_WIDTH * TILE_HEIGHT)) + CoordToTileIndex[y-ty*TILE_WIDTH][x-tx*TILE_HEIGHT];
 #else
-    int offset = y * FB_WIDTH + x;
+    int offset = y * PJD_FB_WIDTH + x;
 #endif
     WriteFramebufferDirect(offset, color);
 }
 
 void DrawPixelToScreen(int x, int y, rgba8 color)
 {
-    assert(x < FB_WIDTH && y < FB_HEIGHT);
-    ((rgba8*)Ctx.Out.CB)[y*FB_WIDTH+x] = color;
+    assert(x < PJD_FB_WIDTH && y < PJD_FB_HEIGHT);
+    ((rgba8*)Ctx.Out.CB)[y*PJD_FB_WIDTH+x] = color;
 }
 
 rgba8 SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
@@ -297,7 +297,7 @@ static void ResolveTiledFrameBuffer(size_t id, int startTile, int endTile, void*
 
     rgba8* outCB = (rgba8*)Ctx.Out.CB;
     const uint32_t* TileBuffer = ColorBuffer[Frame] + startTile * PixelsPerTile;
-    const uint32_t* TileBufferEnd = &ColorBuffer[Frame][FB_WIDTH*FB_HEIGHT];
+    const uint32_t* TileBufferEnd = &ColorBuffer[Frame][PJD_FB_WIDTH*PJD_FB_HEIGHT];
 
     for (int tileIndex = startTile; tileIndex < endTile; ++tileIndex)
     {
@@ -313,12 +313,12 @@ static void ResolveTiledFrameBuffer(size_t id, int startTile, int endTile, void*
             scratch[y * TILE_WIDTH + x] = ((TileBuffer + pos) < TileBufferEnd) ? TileBuffer[pos] : 0;
         }
 
-        int tileHeight = min(tileOriginY + TILE_HEIGHT, FB_HEIGHT - 1) - tileOriginY;
-        int tileWidth = min(tileOriginX + TILE_WIDTH, FB_WIDTH - 1) - tileOriginX;
+        int tileHeight = min(tileOriginY + TILE_HEIGHT, PJD_FB_HEIGHT - 1) - tileOriginY;
+        int tileWidth = min(tileOriginX + TILE_WIDTH, PJD_FB_WIDTH - 1) - tileOriginX;
         for (int y = 0; y < tileHeight; ++y)
         {
             memcpy(
-                &outCB[(tileOriginY + y) * FB_WIDTH + tileOriginX],
+                &outCB[(tileOriginY + y) * PJD_FB_WIDTH + tileOriginX],
                 &scratch[y * TILE_WIDTH],
                 tileWidth * sizeof(uint32_t));
         }
@@ -341,7 +341,7 @@ void ResolveFrameBuffer()
     if (Ctx.DebugMode == DM_DepthBuffer)
     {
         // just overrid the colorbuffer so tile resolve is done automatically
-        for (int i = 0; i < FB_HEIGHT * FB_WIDTH; ++i) 
+        for (int i = 0; i < PJD_FB_HEIGHT * PJD_FB_WIDTH; ++i) 
         {
             const float zf = 1000.0f;
             const float zn = 10.0f;
@@ -373,15 +373,15 @@ void ResolveFrameBuffer()
         }
     }
 #else
-    memcpy(outCB, ColorBuffer[Frame], FB_WIDTH * FB_HEIGHT * sizeof(uint32_t));
+    memcpy(outCB, ColorBuffer[Frame], PJD_FB_WIDTH * PJD_FB_HEIGHT * sizeof(uint32_t));
 #endif
 
-    DebugDrawExportBufferBuckets(ExportBuffer, 0, 300, FB_WIDTH/4, 50);
+    DebugDrawExportBufferBuckets(ExportBuffer, 0, 300, PJD_FB_WIDTH/4, 50);
 
     ExportBufferReset(ExportBuffer, true);
 }
 
 void SaveScreenshot(const char* filename)
 {
-    WriteToTgaFile(filename, FB_WIDTH, FB_HEIGHT, (uint8_t*)Ctx.Out.CB);
+    WriteToTgaFile(filename, PJD_FB_WIDTH, PJD_FB_HEIGHT, (uint8_t*)Ctx.Out.CB);
 }

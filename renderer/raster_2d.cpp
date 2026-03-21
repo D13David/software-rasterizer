@@ -285,7 +285,7 @@ static void (*DrawFunc)(int x, int y, rgba8 color) = DrawPixelToScreen;
 
 static void DrawPixelToScreenSafe(int x, int y, rgba8 color)
 {
-    if (x < 0 || x > FB_WIDTH - 1 || y < 0 || y > FB_HEIGHT - 1) {
+    if (x < 0 || x > PJD_FB_WIDTH - 1 || y < 0 || y > PJD_FB_HEIGHT - 1) {
         return;
     }
     DrawFunc(x, y, color);

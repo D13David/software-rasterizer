@@ -492,7 +492,7 @@ namespace Thirteen
                 swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
                 swapChainDesc.SampleDesc.Count = 1;
                 swapChainDesc.Flags = tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
-                swapChainDesc.Scaling = DXGI_SCALING_NONE;
+                swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
 
                 IDXGISwapChain1* swapChain1 = nullptr;
                 HRESULT hr = factory->CreateSwapChainForHwnd(

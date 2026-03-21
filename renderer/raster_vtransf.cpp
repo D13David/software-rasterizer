@@ -233,15 +233,15 @@ static void RunVertexTransform_(size_t id, int start, int end, void* context)
             }
 
             ClipVertex v0 = clipped[0];
-            ClipToScreen(v0.ClipSpacePos, FB_WIDTH - 1, FB_HEIGHT - 1, v0.ClipSpacePos);
+            ClipToScreen(v0.ClipSpacePos, PJD_FB_WIDTH - 1, PJD_FB_HEIGHT - 1, v0.ClipSpacePos);
 
             for (int i = 1; i < numClippedVertices - 1; ++i)
             {
                 ClipVertex v1 = clipped[i];
-                ClipToScreen(v1.ClipSpacePos, FB_WIDTH - 1, FB_HEIGHT - 1, v1.ClipSpacePos);
+                ClipToScreen(v1.ClipSpacePos, PJD_FB_WIDTH - 1, PJD_FB_HEIGHT - 1, v1.ClipSpacePos);
 
                 ClipVertex v2 = clipped[i + 1];
-                ClipToScreen(v2.ClipSpacePos, FB_WIDTH - 1, FB_HEIGHT - 1, v2.ClipSpacePos);
+                ClipToScreen(v2.ClipSpacePos, PJD_FB_WIDTH - 1, PJD_FB_HEIGHT - 1, v2.ClipSpacePos);
 
 #define EXPORT_VERTEX(idx, vert) do {                                   \
         float invW = vert.ClipSpacePos[3];                              \
