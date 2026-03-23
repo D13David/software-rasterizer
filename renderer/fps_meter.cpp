@@ -5,7 +5,7 @@
 #include <Windows.h>
 
 #define MAX_HISTORY_ITEMS 64
-#define FPS_MAX 240
+#define FPS_MAX 90
 #define UPDATE_FREQUENCY 300
 
 struct FpsMeterContext
@@ -24,7 +24,7 @@ void FPSMeterInitialize()
     context.time = GetTickCount();
     context.frames = 0;
     context.head = 0;
-    context.size = 0;
+    context.size = MAX_HISTORY_ITEMS;
 }
 
 void FPSMeterUpdate()
@@ -39,10 +39,6 @@ void FPSMeterUpdate()
         float fps = (context.frames * 1000.0f) / deltaTime;
         context.history[context.head] = (int)(fps + 0.5f);
         context.head = (context.head + 1) % MAX_HISTORY_ITEMS;
-        if (context.size < MAX_HISTORY_ITEMS) {
-            context.size++;
-        }
-
         context.frames = 0;
         context.time = currentTime;
     }
@@ -52,11 +48,12 @@ void FPSMeterDraw(int x, int y, int width, int height)
 {
     int offsetY = y + height;
 
-    int markers[] = { 30, 60, 120, 240 };
-    for (int i = 0; i < 4; ++i)
+    int markers[] = { 30, 60, 90 };
+    for (int i = 0; i < 3; ++i)
     {
         int posY = markers[i] * height / FPS_MAX;
         DrawLine(x, offsetY - posY, width, offsetY - posY, COLOR(1, 1, 1), 1, LineStyle::DOTTED_LINE);
+        WriteString(Format("%d", markers[i]), x + width + 8, offsetY - posY - 4);
     }
 
     if (context.size < 2) {
@@ -87,7 +84,7 @@ void FPSMeterDraw(int x, int y, int width, int height)
         DrawLine(
                     currentX, offsetY - (value0 * height) / FPS_MAX,
                     nextX,    offsetY - (value1 * height) / FPS_MAX,
-                    value1 < 60 ? COLOR(1, 0, 0) : COLOR(0, 1, 0), 3
+                    value1 < 30 ? COLOR(1, 0, 0) : COLOR(0, 1, 0), 3
                 );
 
         currentX = nextX;
