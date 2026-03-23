@@ -156,7 +156,7 @@ void SetDebugMode(DebugMode mode)
 
 void SetPixelShader(PS shader)
 {
-    Ctx.PixelShader = shader;
+    Ctx.PixelShader = shader != NULL ? shader : ShadePixelDefault;
 }
 
 void GetViewport(uint32_t* width, uint32_t* height)

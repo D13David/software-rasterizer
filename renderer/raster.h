@@ -17,7 +17,7 @@ typedef enum DebugMode
 } DebugMode;
 #endif
 
-typedef rgba8 (*PS)(float mipLevel, const Interpolants* interp);
+typedef rgba8 (*PS)(float mipLevel, const Interpolants* interp, bool* discard);
 
 void RasterizerInitialize(const RasterizerDesc& init);
 void RasterizerDestroy();

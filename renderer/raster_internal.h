@@ -176,7 +176,7 @@ void RunRasterizeTriangles(bool parallelize, const struct Range* range);
 void DebugViewTileCoverage();
 #endif // DEBUG_TILE_CLASSIFICATION
 
-static rgba8 ShadePixelDefault(float mipLevel, const Interpolants* interp)
+static rgba8 ShadePixelDefault(float mipLevel, const Interpolants* interp, bool* discard)
 {
     return SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
 }
