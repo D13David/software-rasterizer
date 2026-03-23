@@ -128,6 +128,7 @@ static uint16_t        NumRooms;
 static Tr3Room*        Rooms;
 static Tr3Texture      Textures[MAX_TEXTURES];
 static uint32_t        NumTextures;
+static int16_t*        TextureAnimRecords;
 static int16_t*        MeshData;
 static int16_t**       Meshes;
 static uint32_t        NumEntities;
@@ -135,14 +136,15 @@ static uint32_t        NumStaticObjects;
 static Tr3Entity       Entities[NUM_ENTITIES];
 static Tr3StaticObject StaticObjects[MAX_STATIC_OBJECTS];
 
-static bool         BatchUsed[TRIANGLE_BUCKETS] = {};
-static Batch        PrimitiveBatches[TRIANGLE_BUCKETS];
+static Batch        PrimitiveBatches[TRIANGLE_BUCKETS][2];
 
 static vec3         PlayerPos;
 static float        Yaw = DEG2RAD(90.0f);
 static float        Pitch;
 static mat4         ViewMatrix;
 static mat4         ProjectionMatrix;
+static mat4         ObjectToWorld;
+static mat4         ObjectToView;
 static int          centerX;
 static int          centerY;
 
@@ -214,7 +216,7 @@ static void LoadTextureAtlases(FILE* fp)
             );
         }
 
-        TexturePage[i] = LoadTextureFromMemory(buffer, 256, 256);
+        TexturePage[i] = LoadTextureFromMemory(buffer, 256, 256, true);
     }
 
     TexturePage[MAX_TEXTURE_PAGES] = LoadColorTexture(RGBA(255, 255, 255, 255));
@@ -373,7 +375,9 @@ static void LoadBoxes(FILE* fp)
 static void LoadTextures(FILE* fp)
 {
     // animated textures
-    ReadCountAndSkip<uint32_t>(fp, 2);
+    int size = Read<uint32_t>(fp);
+    TextureAnimRecords = (int16_t*)malloc(size * sizeof(int16_t));
+    fread(TextureAnimRecords, sizeof(int16_t), size, fp);
 
     NumTextures = Read<uint32_t>(fp);
     assert(NumTextures < MAX_TEXTURES);
@@ -409,7 +413,7 @@ static bool LoadTombRaider3Level(const char* path)
 
 bool SceneInitialize()
 {
-    if (!LoadTombRaider3Level("C:\\Program Files (x86)\\Steam\\steamapps\\common\\TombRaider (III)\\data\\JUNGLE.TR2")) {
+    if (!LoadTombRaider3Level("C:\\Program Files (x86)\\Steam\\steamapps\\common\\TombRaider (III)\\data\\RAPIDS.TR2")) {
         return false;
     }
 
@@ -423,17 +427,18 @@ bool SceneInitialize()
 
     SetCursorPos(centerX, centerY);
 
-    PlayerPos[0] = 157.059265;
-    PlayerPos[1] = -129.910492;
-    PlayerPos[2] = 384.315460;
-    Yaw = 3.315797;
-    Pitch = 0.007500;
+    PlayerPos[0] = 334.603546;
+    PlayerPos[1] = 133.472733;
+    PlayerPos[2] = 310.849121;
+    Yaw = 9.095793;
+    Pitch = -0.360000;
 
     return true;
 }
 
 void SceneDestroy()
 {
+    free(TextureAnimRecords);
     free(Meshes);
     free(MeshData);
     for (int i = 0; i < NumRooms; ++i) {
@@ -510,16 +515,16 @@ static void FillEntityDrawInfo(const int16_t* data, DrawInfo* drawInfo)
     drawInfo->Stride = 3;
 }
 
-static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int32_t worldX, int32_t worldY, int32_t worldZ, int16_t idx0, int16_t idx1, int16_t idx2, int16_t texId)
+static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int16_t idx0, int16_t idx1, int16_t idx2, int16_t surfaceColorValue)
 {
     Tr3Texture* texture = NULL;
-    uint8_t* color = NULL;
+    uint8_t* defaultColor = NULL;
     
-    if (texId < NumTextures) 
+    if ((surfaceColorValue&0x7fff) < NumTextures)
     {
         static uint8_t DefaultColor[] ={ 255, 255, 255, 255 };
-        texture = &Textures[texId];
-        color = DefaultColor;
+        texture = &Textures[surfaceColorValue & 0x7fff];
+        defaultColor = DefaultColor;
     }
     else
     {
@@ -534,63 +539,76 @@ static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int3
             }
         };
         texture = &Dummy;
-        color = Palette16 + ((texId >> 6) & 0x3fc);
+        defaultColor = Palette16 + ((surfaceColorValue >> 6) & 0x3fc);
     }
 
     uint16_t texturePage = texture->Page;
     TextureView textureView = TexturePage[texturePage];
     
-    Batch& batch = PrimitiveBatches[texturePage];
-    BatchUsed[texturePage] = true;
+    Batch& batch = PrimitiveBatches[texturePage][texture->Attribute & 1];
 
     uint32_t baseIndex = batch.NumVertices;
 
-#define PUSH_ROOM_VERTEX(index) do {                              \
-        const int16_t* vert = vbuf + ibuf[index] * stride;        \
-        uint8_t r = ((vert[5] & 0x7c00) >> 10) << 3;              \
-        uint8_t g = ((vert[5] & 0x03e0) >>  5) << 3;              \
-        uint8_t b = ((vert[5] & 0x001f) <<  3);                   \
-        assert(batch.NumVertices < MAX_BATCH_VERTICES - 1);       \
-        batch.Vertices[batch.NumVertices++] =                     \
-        {                                                         \
-            ( vert[0] + worldX) / WorldScale,                     \
-            (-vert[1] + worldY) / WorldScale,                     \
-            ( vert[2] + worldZ) / WorldScale,                     \
-            FIXED_8_8(texture->uv[index][0]) / textureView.Width, \
-            FIXED_8_8(texture->uv[index][1]) / textureView.Height,\
-            r/255.0f, g/255.0f, b/255.0f                          \
-        };                                                        \
-    } while(0)
+    vec4 pos[3];
+    vec4 color[3];
+
+    int16_t idx[]{ idx0,idx1,idx2 };
+
+    for (int i = 0; i < 3; ++i)
+    {
+        const int16_t* vert = vbuf + ibuf[idx[i]] * stride;
+        vec3 tmp = {
+            ( vert[0] / WorldScale),
+            (-vert[1] / WorldScale),
+            ( vert[2] / WorldScale)
+        };
+        Matrix4MulVec3(ObjectToView, tmp, 1, pos[i]);
+
+        uint8_t r, g, b;
+        if (stride == 6) 
+        {
+            r = ((vert[5] & 0x7c00) >> 10) << 3;
+            g = ((vert[5] & 0x03e0) >> 5) << 3;
+            b = ((vert[5] & 0x001f) << 3);
+        }
+        else
+        {
+            r = defaultColor[0];
+            g = defaultColor[1];
+            b = defaultColor[2];
+        }
+
+        // fog
+        float fogStart = 60.0f;
+        float fogEnd = 100.0f;
+        float fogFactor = 1.0f;
+        /*if (pos[i][2] < fogStart) fogFactor = 1.0f;
+        else if (pos[i][2] > fogEnd) fogFactor = 0.0f;
+        else {
+            fogFactor = (fogEnd - pos[i][2]) / (fogEnd - fogStart);
+        }*/
+
+        color[i][0] = (r / 255.0f) * fogFactor;
+        color[i][1] = (g / 255.0f) * fogFactor;
+        color[i][2] = (b / 255.0f) * fogFactor;
+    }
 
 #define PUSH_VERTEX(index) do {                                   \
-        const int16_t* vert = vbuf + ibuf[index] * stride;        \
-        uint8_t r = color[0];                                     \
-        uint8_t g = color[1];                                     \
-        uint8_t b = color[2];                                     \
         assert(batch.NumVertices < MAX_BATCH_VERTICES - 1);       \
         batch.Vertices[batch.NumVertices++] =                     \
         {                                                         \
-            ( vert[0] + worldX) / WorldScale,                     \
-            (-vert[1] + worldY) / WorldScale,                     \
-            ( vert[2] + worldZ) / WorldScale,                     \
-            FIXED_8_8(texture->uv[index][0]) / textureView.Width, \
-            FIXED_8_8(texture->uv[index][1]) / textureView.Height,\
-            r/255.0f, g/255.0f, b/255.0f                          \
+            pos[index][0],                                        \
+            pos[index][1],                                        \
+            pos[index][2],                                        \
+            FIXED_8_8(texture->uv[idx[index]][0]) / textureView.Width, \
+            FIXED_8_8(texture->uv[idx[index]][1]) / textureView.Height,\
+            color[index][0], color[index][1], color[index][2]     \
         };                                                        \
     } while(0)
 
-    if (stride == 6)
-    {
-        PUSH_ROOM_VERTEX(idx0);
-        PUSH_ROOM_VERTEX(idx1);
-        PUSH_ROOM_VERTEX(idx2);
-    } 
-    else
-    {
-        PUSH_VERTEX(idx0);
-        PUSH_VERTEX(idx1);
-        PUSH_VERTEX(idx2);
-    }
+    PUSH_VERTEX(0);
+    PUSH_VERTEX(1);
+    PUSH_VERTEX(2);
 
     assert(batch.NumIndices < MAX_BATCH_INDICES - 3);
     batch.Indices[batch.NumIndices++] = baseIndex + 0;
@@ -598,7 +616,7 @@ static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int3
     batch.Indices[batch.NumIndices++] = baseIndex + 2;
 }
 
-static void BatchTris(int x, int y, int z, const int16_t* vertexBuffer, int stride, int numTris, const Tr3TriFace* tris)
+static void BatchTris(const int16_t* vertexBuffer, int stride, int numTris, const Tr3TriFace* tris)
 {
     for (int i = 0; i < numTris; ++i)
     {
@@ -607,14 +625,14 @@ static void BatchTris(int x, int y, int z, const int16_t* vertexBuffer, int stri
         bool doubleSided = tri->Texture & 0x8000;
 
         if (doubleSided) {
-            BatchTri(vertexBuffer, &tri->Vertices[0], stride, x, y, z, 0, 2, 1, tri->Texture & 0x7fff);
+            BatchTri(vertexBuffer, &tri->Vertices[0], stride, 0, 2, 1, tri->Texture & 0x7fff);
         }
 
-        BatchTri(vertexBuffer, &tri->Vertices[0], stride, x, y, z, 0, 1, 2, tri->Texture & 0x7fff);
+        BatchTri(vertexBuffer, &tri->Vertices[0], stride, 0, 1, 2, tri->Texture & 0x7fff);
     }
 }
 
-static void BatchQuads(int x, int y, int z, const int16_t* vertexBuffer, int stride, int numQuads, const Tr3QuadFace* quads)
+static void BatchQuads(const int16_t* vertexBuffer, int stride, int numQuads, const Tr3QuadFace* quads)
 {
     for (int i = 0; i < numQuads; ++i)
     {
@@ -624,28 +642,28 @@ static void BatchQuads(int x, int y, int z, const int16_t* vertexBuffer, int str
 
         if (doubleSided)
         {
-            BatchTri(vertexBuffer, &quad->Vertices[0], stride, x, y, z, 0, 2, 1, quad->Texture & 0x7fff);
-            BatchTri(vertexBuffer, &quad->Vertices[0], stride, x, y, z, 0, 3, 2, quad->Texture & 0x7fff);
+            BatchTri(vertexBuffer, &quad->Vertices[0], stride, 0, 2, 1, quad->Texture);
+            BatchTri(vertexBuffer, &quad->Vertices[0], stride, 0, 3, 2, quad->Texture);
         }
 
-        BatchTri(vertexBuffer, &quad->Vertices[0], stride, x, y, z, 0, 1, 2, quad->Texture & 0x7fff);
-        BatchTri(vertexBuffer, &quad->Vertices[0], stride, x, y, z, 0, 2, 3, quad->Texture & 0x7fff);
+        BatchTri(vertexBuffer, &quad->Vertices[0], stride, 0, 1, 2, quad->Texture);
+        BatchTri(vertexBuffer, &quad->Vertices[0], stride,  0, 2, 3, quad->Texture);
     }
 }
 
-static void BatchDrawInfo(int x, int y, int z, const DrawInfo* drawInfo)
+static void BatchDrawInfo(const DrawInfo* drawInfo)
 {
     if (drawInfo->NumQuads > 0) {
-        BatchQuads(x, y, z, drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumQuads, drawInfo->Quads);
+        BatchQuads(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumQuads, drawInfo->Quads);
     }
     if (drawInfo->NumTris > 0) {
-        BatchTris(x, y, z, drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumTris, drawInfo->Tris);
+        BatchTris(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumTris, drawInfo->Tris);
     }
     if (drawInfo->NumColoredQuads > 0) {
-        BatchQuads(x, y, z, drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumColoredQuads, drawInfo->ColoredQuads);
+        BatchQuads(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumColoredQuads, drawInfo->ColoredQuads);
     }
     if (drawInfo->NumColoredTris > 0) {
-        BatchTris(x, y, z, drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumColoredTris, drawInfo->ColoredTris);
+        BatchTris(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumColoredTris, drawInfo->ColoredTris);
     }
 }
 
@@ -653,24 +671,61 @@ static void InitializeBatches()
 {
     for (int i = 0; i < TRIANGLE_BUCKETS; ++i)
     {
-        PrimitiveBatches[i].NumVertices = 0;
-        PrimitiveBatches[i].NumIndices = 0;;
-        BatchUsed[i] = false;
+        for (int j = 0; j < 2; ++j)
+        {
+            PrimitiveBatches[i][j].NumVertices = 0;
+            PrimitiveBatches[i][j].NumIndices = 0;
+        }
     }
+}
+
+static rgba8 ShadePixelLM(float mipLevel, const Interpolants* interp, bool* discard)
+{
+    return COLOR(interp->r, interp->g, interp->b);
+}
+static rgba8 ShadePixel(float mipLevel, const Interpolants* interp, bool* discard)
+{
+#if 1
+    rgba8 color = SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
+    rgba8 vertexColor = COLOR(interp->r, interp->g, interp->b);
+    return RGBA8Mul(color, vertexColor);
+#else
+    color4 color;
+    ConvertRGBA8(SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel), color);
+
+    color4 vertexColor{ interp->r, interp->g, interp->b, 1 };
+    Color4Mul(color, vertexColor, color);
+
+    return ConvertColor4(color);
+#endif
+}
+static rgba8 ShadePixelAlphaTest(float mipLevel, const Interpolants* interp, bool* discard)
+{
+    rgba8 color = SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
+    if (color == 0) {
+        *discard = true;
+        return 0;
+    }
+    rgba8 vertexColor = COLOR(interp->r, interp->g, interp->b);
+    return RGBA8Mul(color, vertexColor);
 }
 
 static void RenderBatches()
 {
-    mat4 WorldViewProjection;
-    Matrix4Mul(ViewMatrix, ProjectionMatrix, WorldViewProjection);
+    if (LightmapsOnly) {
+        SetPixelShader(ShadePixelLM);
+    }
+    else {
+        SetPixelShader(ShadePixel);
+    }
 
+    // draw opaque
     for (int page = 0; page < TRIANGLE_BUCKETS; ++page)
     {
-        if (!BatchUsed[page]) {
+        Batch* batch = &PrimitiveBatches[page][0];
+        if (batch->NumIndices == 0) {
             continue;
         }
-
-        Batch* batch = &PrimitiveBatches[page];
 
         SetTextureView(TexturePage[page]);
 
@@ -681,40 +736,101 @@ static void RenderBatches()
             VertexLayout,
             VertexLayoutCount,
             batch->NumIndices / 3,
-            WorldViewProjection,
+            ProjectionMatrix,
+            true
+        );
+    }
+
+    SetPixelShader(ShadePixelAlphaTest);
+
+    // draw alpha tested
+    for (int page = 0; page < TRIANGLE_BUCKETS; ++page)
+    {
+        Batch* batch = &PrimitiveBatches[page][1];
+        if (batch->NumIndices == 0) {
+            continue;
+        }
+
+        SetTextureView(TexturePage[page]);
+
+        DrawTriangleList
+        (
+            batch->Vertices,
+            batch->Indices,
+            VertexLayout,
+            VertexLayoutCount,
+            batch->NumIndices / 3,
+            ProjectionMatrix,
             true
         );
     }
 }
 
-static void BatchEntity(int id, int x, int y, int z)
-{
-    if (Entities[id].NumMeshes == 0) {
-        return;
-    }
+//static void BatchEntity(int id, int x, int y, int z)
+//{
+//    if (Entities[id].NumMeshes == 0) {
+//        return;
+//    }
+//
+//    DrawInfo drawInfo;
+//    for (int i = 0; i < Entities[id].NumMeshes; ++i)
+//    {
+//        int16_t* mesh = Meshes[Entities[id].MeshOffset+i];
+//        FillEntityDrawInfo(mesh, &drawInfo);
+//        BatchDrawInfo(x + i * 150, y, z, 0, &drawInfo);
+//    }
+//}
 
-    DrawInfo drawInfo;
-    for (int i = 0; i < Entities[id].NumMeshes; ++i)
+static void UpdateAnimatedTextures()
+{
+    static float frame = 0;
+    frame = frame + DeltaTime;
+
+    typedef struct AnimRecord
     {
-        int16_t* mesh = Meshes[Entities[id].MeshOffset+i];
-        FillEntityDrawInfo(mesh, &drawInfo);
-        BatchDrawInfo(x + i * 150, y, z, &drawInfo);
+        int16_t NumFrames;
+        int16_t FrameIds[1];
+    } AnimRecord;
+
+    if (frame > 0.1f)
+    {
+        int16_t* ptr = TextureAnimRecords;
+        for (int i = *ptr++; i > 0; --i)
+        {
+            AnimRecord* record = (AnimRecord*)ptr++;
+
+            Tr3Texture tmp = Textures[record->FrameIds[0]];
+            for (int j = 0; j < record->NumFrames; ++j) {
+                Textures[record->FrameIds[j]] = Textures[record->FrameIds[j + 1]];
+            }
+            Textures[record->FrameIds[record->NumFrames]] = tmp;
+
+            ptr = ptr + (record->NumFrames + 1);
+        }
+        frame = 0;
     }
 }
 
 static void RenderScene()
 {
-    DrawInfo drawInfo;
+    UpdateAnimatedTextures();
 
+    DrawInfo drawInfo;
     if (Entities[SKYBOX].NumMeshes != 0)
     {
         int16_t* mesh = Meshes[Entities[SKYBOX].MeshOffset];
         FillEntityDrawInfo(mesh, &drawInfo);
 
-        int x = PlayerPos[0] * WorldScale;
-        int y = PlayerPos[1] * WorldScale;
-        int z = PlayerPos[2] * WorldScale;
-        BatchDrawInfo(x, y, z, &drawInfo);
+        mat4 ObjectScale;
+        CreateMatrixScale(1, 1, 1, ObjectScale);
+
+        mat4 ObjectTranslate;
+        CreateMatrixTransform(PlayerPos[0], PlayerPos[1], PlayerPos[2], ObjectTranslate);
+
+        Matrix4Mul(ObjectScale, ObjectTranslate, ObjectToWorld);
+        Matrix4Mul(ObjectToWorld, ViewMatrix, ObjectToView);
+
+        BatchDrawInfo(&drawInfo);
     }
 
     SetDepthWrite(false);
@@ -728,19 +844,28 @@ static void RenderScene()
         Tr3Room* room = &Rooms[i];
         FillRoomDrawInfo(room->Data, &drawInfo);
 
+        CreateMatrixTransform(room->x / WorldScale, room->y / WorldScale, room->z / WorldScale, ObjectToWorld);
+        Matrix4Mul(ObjectToWorld, ViewMatrix, ObjectToView);
+
         // batch room geomtry
-        BatchDrawInfo(room->x, room->y, room->z, &drawInfo);
+        BatchDrawInfo(&drawInfo);
 
         for (int j = 0; j < room->NumMeshes; ++j)
         {
+            mat4 MatObjOrient;
+            CreateMatrixRotateY((room->Meshes[j].Rotation / 0x4000) * PJD_PI_2, MatObjOrient);
+
+            mat4 MatObjTranslate;
+            CreateMatrixTransform(room->Meshes[j].x / WorldScale, -room->Meshes[j].y / WorldScale, room->Meshes[j].z / WorldScale, MatObjTranslate);
+
+            Matrix4Mul(MatObjOrient, MatObjTranslate, ObjectToWorld);
+            Matrix4Mul(ObjectToWorld, ViewMatrix, ObjectToView);
+
             Tr3StaticObject* object = &StaticObjects[room->Meshes[j].MeshID];
             if (object->Flags & 2)
             {
                 FillEntityDrawInfo(Meshes[object->Mesh], &drawInfo);
-                BatchDrawInfo(room->Meshes[j].x,
-                              -room->Meshes[j].y,
-                              room->Meshes[j].z,
-                              &drawInfo);
+                BatchDrawInfo(&drawInfo);
             }
         }
     }
@@ -843,28 +968,7 @@ static void HandleInput()
 
     CreateMatrixLookAt(PlayerPos, target, up, ViewMatrix);
 
-    CreateMatrixPerspectiveFovLH(45.0f, PJD_FB_WIDTH / (float)PJD_FB_HEIGHT, 1, 700.0f, ProjectionMatrix);
-}
-
-static rgba8 ShadePixelLM(float mipLevel, const Interpolants* interp)
-{ 
-    return COLOR(interp->r, interp->g, interp->b);
-}
-static rgba8 ShadePixel(float mipLevel, const Interpolants* interp)
-{
-#if 1
-    rgba8 color = SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
-    rgba8 vertexColor = COLOR(interp->r, interp->g, interp->b);
-    return RGBA8Mul(color, vertexColor);
-#else
-    color4 color;
-    ConvertRGBA8(SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel), color);
-
-    color4 vertexColor{ interp->r, interp->g, interp->b, 1 };
-    Color4Mul(color, vertexColor, color);
-
-    return ConvertColor4(color);
-#endif
+    CreateMatrixPerspectiveFovLH(45.0f, PJD_FB_WIDTH / (float)PJD_FB_HEIGHT, 0.1, 300, ProjectionMatrix);
 }
 
 void SceneRenderFrame()
@@ -873,13 +977,6 @@ void SceneRenderFrame()
 
     Clear(RGB(0, 0, 0));
     SetDrawMode(DrawMode::Solid);
-
-    if (LightmapsOnly) {
-        SetPixelShader(ShadePixelLM);
-    }
-    else {
-        SetPixelShader(ShadePixel);
-    }
 
     InitializeBatches();
     RenderScene();
