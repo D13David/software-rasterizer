@@ -140,6 +140,14 @@ PJD_INLINE void CreateMatrixTransform(float x, float y, float z, mat4 out)
     out[3][0] = 0; out[3][1] = 0; out[3][2] = 0; out[3][3] = 1;
 }
 
+PJD_INLINE void CreateMatrixScale(float x, float y, float z, mat4 out)
+{
+    out[0][0] = x; out[0][1] = 0; out[0][2] = 0; out[0][3] = 0;
+    out[1][0] = 0; out[1][1] = y; out[1][2] = 0; out[1][3] = 0;
+    out[2][0] = 0; out[2][1] = 0; out[2][2] = z; out[2][3] = 0;
+    out[3][0] = 0; out[3][1] = 0; out[3][2] = 0; out[3][3] = 1;
+}
+
 PJD_INLINE void CreateMatrixRotateX(float angle, mat4 out)
 {
     float s, c;
