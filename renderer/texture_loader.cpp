@@ -138,7 +138,7 @@ void WriteToTgaFile(const char* filename, uint32_t width, uint32_t height, uint8
 static uint32_t ComputeMipMapSize(uint32_t width, uint32_t height, uint32_t bpp, uint32_t minDimension, uint32_t* maxLevels)
 {
     uint32_t size = 0;
-    uint32_t levels = 1;
+    uint32_t levels = 0;
     for (; width >= minDimension && height >= minDimension; )
     {
         size += width * height * bpp;
@@ -173,12 +173,14 @@ static rgba8 mipLevelDebugValues[20] = {
     COLOR(0.25, 0.25, 0.25),  // Dark Gray
 };
 
-static void GenerateMipMaps(uint8_t* data, TextureView& texture)
+static void GenerateMipMaps(uint8_t* data, TextureView& texture, bool generateMips = true)
 {
     assert(texture.Data == NULL && "texture already initialized...");
+
+    int minDimension = generateMips ? 1 : max(texture.Width, texture.Height);
     
     uint32_t maxMipMapLevels;
-    size_t bufferSize = ComputeMipMapSize(texture.Width, texture.Height, 4, 1, &maxMipMapLevels);
+    size_t bufferSize = ComputeMipMapSize(texture.Width, texture.Height, 4, minDimension, &maxMipMapLevels);
 
     texture.MipOffsets = (size_t*)calloc(maxMipMapLevels, sizeof(size_t));
     assert(texture.MipOffsets!= NULL);
@@ -278,14 +280,14 @@ TextureView LoadColorTexture(rgba8 color)
     return result;
 }
 
-TextureView LoadTextureFromMemory(void* buffer, int width, int height)
+TextureView LoadTextureFromMemory(void* buffer, int width, int height, bool generateMips)
 {
     TextureView result = {
         .Width = width,
         .Height = height,
     };
 
-    GenerateMipMaps((uint8_t*)buffer, result);
+    GenerateMipMaps((uint8_t*)buffer, result, generateMips);
 
     return result;
 }

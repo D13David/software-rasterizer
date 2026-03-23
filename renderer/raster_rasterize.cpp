@@ -148,7 +148,7 @@ static TileCoverage ClassifyTile(int tileMinX, int tileMinY, int tileMaxX, int t
     return (TileCoverage)((allOutside << 1) | allInside);
 }
 
-static PJD_INLINE rgba8 ShadePixel(float mipLevel, const Interpolants* interp DEBUG_VIEW_ONLY_ARG(DebugParams params))
+static PJD_INLINE rgba8 ShadePixel(float mipLevel, const Interpolants* interp, bool* discard DEBUG_VIEW_ONLY_ARG(DebugParams params))
 {
 #if PJD_DEBUG_VIEW_ENABLED
     switch (Ctx.DebugMode)
@@ -163,7 +163,7 @@ static PJD_INLINE rgba8 ShadePixel(float mipLevel, const Interpolants* interp DE
     }
 #endif
 
-    return Ctx.PixelShader(mipLevel, interp);
+    return Ctx.PixelShader(mipLevel, interp, discard);
 }
 
 template<bool EdgeTest>
@@ -192,11 +192,15 @@ static PJD_INLINE void RasterizeQuad(int x, int y, float mipLevel, const Interpo
 #endif
         if (index < PJD_FB_WIDTH*PJD_FB_HEIGHT && I(i,z) < depthBuffer[index])
         {
-            if (Ctx.DepthWriteEnabled) {
-                depthBuffer[index] = I(i, z);
+            bool discard = false;
+            rgba8 color = ShadePixel(mipLevel, &interpolants[i], &discard DEBUG_VIEW_ONLY_ARG(params));
+            if (!discard) 
+            {
+                if (Ctx.DepthWriteEnabled) {
+                    depthBuffer[index] = I(i, z);
+                }
+                WriteFramebufferDirect(index, color);
             }
-
-            WriteFramebufferDirect(index, ShadePixel(mipLevel, &interpolants[i] DEBUG_VIEW_ONLY_ARG(params)));
         }
     }
 }

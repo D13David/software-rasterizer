@@ -5,7 +5,7 @@
 
 TextureView LoadCheckerboardTexture();
 TextureView LoadColorTexture(rgba8 color);
-TextureView LoadTextureFromMemory(void* buffer, int width, int height);
+TextureView LoadTextureFromMemory(void* buffer, int width, int height, bool generateMips = true);
 TextureView LoadTexture(const char* path);
 void FreeTexture(TextureView texture);
 void WriteToTgaFile(const char* filename, uint32_t width, uint32_t height, uint8_t* dataRGRA, uint8_t dataChannels = 4, uint8_t fileChannels = 3);
