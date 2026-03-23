@@ -242,10 +242,10 @@ rgba8 SampleTextureLod(int sx, int sy, float u, float v, float mipLevel)
     return mipData[y * mipWidth + x];
 }
 
-static void RunDrawTrianglesWireframe(rgba8 color)
+static void RunDrawTrianglesWireframe(const Range* range, rgba8 color)
 {
-    /*size_t numVertices = (ExportBufferReadPublished(ExportBuffer) / sizeof(ExportVertex));
-    ExportVertex* vertexStart = (ExportVertex*)ExportBufferData(ExportBuffer);
+    int numVertices = (range->Size / sizeof(ExportVertex));
+    ExportVertex* vertexStart = (ExportVertex*)range->Ptr;
     for (int i = 0; i < numVertices; i += 3)
     {
         ExportVertex* v0 = &vertexStart[i+0];
@@ -254,7 +254,7 @@ static void RunDrawTrianglesWireframe(rgba8 color)
         DrawLine(v0->ScreenX, v0->ScreenY, v1->ScreenX, v1->ScreenY, color, 2);
         DrawLine(v1->ScreenX, v1->ScreenY, v2->ScreenX, v2->ScreenY, color, 2);
         DrawLine(v2->ScreenX, v2->ScreenY, v0->ScreenX, v0->ScreenY, color, 2);
-    }*/
+    }
 }
 
 void DrawTriangleList(const void* data, const uint32_t* indices, const InputElementDescriptor* elements, int numInputElements, int numPrimitives, mat4 ProjectionMatrix, bool parallel)
@@ -277,14 +277,15 @@ void DrawTriangleList(const void* data, const uint32_t* indices, const InputElem
             break;
         }
 
-        if (Ctx.DrawMode == Solid)
+        
+        RunTriangleBinning(parallel, &range);
+        RunRasterizeTriangles(parallel, &range);
+
+        if (Ctx.DrawMode == Wireframe)
         {
-            RunTriangleBinning(parallel, &range);
-            RunRasterizeTriangles(parallel, &range);
-        }
-        else
-        {
-            RunDrawTrianglesWireframe(COLOR(0.75, 0.75, 0.75));
+            RasterMode2D(false);
+            RunDrawTrianglesWireframe(&range, COLOR(0.1, 0.1, 0.1));
+            RasterMode2D(true);
         }
     }
 
@@ -376,7 +377,9 @@ void ResolveFrameBuffer()
     memcpy(outCB, ColorBuffer[Frame], PJD_FB_WIDTH * PJD_FB_HEIGHT * sizeof(uint32_t));
 #endif
 
-    DebugDrawExportBufferBuckets(ExportBuffer, 0, 300, PJD_FB_WIDTH/4, 50);
+    if (ShowPerformanceMetrics) {
+        DebugDrawExportBufferBuckets(ExportBuffer, 0, 300, PJD_FB_WIDTH / 4, 50);
+    }
 
     ExportBufferReset(ExportBuffer, true);
 }

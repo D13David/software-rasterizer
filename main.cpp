@@ -25,10 +25,10 @@ extern void SceneRenderFrame();
 extern void SceneRenderOverlay2D();
 
 bool WireFrameOverlay = false;
+bool ShowPerformanceMetrics = true;
 float DeltaTime;
 
 static bool ShowHelp = false;
-static bool ShowPerformanceMetrics = true;
 static ULONGLONG LastTime;
 static char ApplicationDataPath[MAX_PATH];
 
@@ -44,7 +44,6 @@ typedef struct Command
 static Command Commands[] =
 {
     { VK_F1, "Toggle Help",              []() { ShowHelp = !ShowHelp; }},
-    { 'W',   "Toggle Wireframe Overlay", []() { WireFrameOverlay = !WireFrameOverlay; } },
     { 'H',   "Toggle Perf Metrics",      []() { ShowPerformanceMetrics = !ShowPerformanceMetrics; } },
 #if PJD_DEBUG_VIEW_ENABLED
     { '0',   "Scene Rendering",          []() { SetDebugMode(DM_None); }},
@@ -53,6 +52,7 @@ static Command Commands[] =
     { '3',   "Show Tile Classification", []() { SetDebugMode(DM_TileClassification); } },
     { '4',   "Show Depth",               []() { SetDebugMode(DM_DepthBuffer); } },
 #endif
+    { '5',   "Toggle Wireframe Overlay", []() { WireFrameOverlay = !WireFrameOverlay; SetDrawMode(WireFrameOverlay ? DrawMode::Wireframe : DrawMode::Solid); }},
     { VK_F11,"Save Screenshot",          []() { CaptureScreenshot(); } },
     { 0, 0 }
 };
