@@ -18,6 +18,13 @@
 #define FIXED_8_8(value) (((value) >> 8) + (value & 0xff) / 256.0f) 
 #define TO_FIXED_8_8(value) ((int16_t)((value) * 256.0f))
 
+#define RENDER_SKY 1
+#define RENDER_ENTITIES 1
+#define RENDER_WORLD 1
+
+#define FOG_START   20*1024
+#define FOG_END     28*1024
+
 // check https://opentomb.github.io/TRosettaStone3/trosettastone.html#_entity_types
 enum Tr3Entities
 {
@@ -46,12 +53,25 @@ struct Tr3RoomStaticMesh
     uint16_t MeshID;
 };
 
+struct Tr3Portal  // 32 bytes
+{
+    uint16_t  AdjoiningRoom; // Which room this portal leads to
+    uint16_t  nx, ny, nz;
+    uint16_t  ax, ay, az;
+    uint16_t  bx, by, bz;
+    uint16_t  cx, cy, cz;
+    uint16_t  dx, dy, dz;
+};
+
 typedef struct Tr3Room
 {
-    int32_t x, y, z;
+    float x, y, z;
     int16_t* Data;
+    Tr3Portal* Portals;
+    uint16_t NumPortals;
     Tr3RoomStaticMesh* Meshes;
     uint16_t NumMeshes;
+    vec3 Bounds[2];
 } Tr3Room;
 
 typedef struct Tr3QuadFace
@@ -122,6 +142,7 @@ typedef struct DrawInfo
 #define TRIANGLE_BUCKETS (MAX_TEXTURE_PAGES+1)
 
 // tomb raider 3 level data
+static uint8_t         Palette8[256 * 3];
 static uint8_t         Palette16[256 * 4];
 static TextureView     TexturePage[MAX_TEXTURE_PAGES + 1];
 static uint16_t        NumRooms;
@@ -147,8 +168,11 @@ static mat4         ObjectToWorld;
 static mat4         ObjectToView;
 static int          centerX;
 static int          centerY;
+static int          CurrentRoom = -1;
 
 static bool         LightmapsOnly;
+static bool         AlphaTestEnabled = 1;
+static bool         FogEnabled = 1;
 
 const float         MouseSensitivity = 0.0025f;
 const float         MoveSpeed = 4.0f;
@@ -160,6 +184,8 @@ InputElementDescriptor VertexLayout[] = {
         { InputElementType::Color,    0,  InputElementFormat::FLOAT3, 0,  offsetof(Vertex, r) }
 };
 const uint32_t VertexLayoutCount = sizeof(VertexLayout) / sizeof(VertexLayout[0]);
+
+static void FillEntityDrawInfo(const int16_t* data, DrawInfo* drawInfo);
 
 template<typename T>
 static T Read(FILE* fp)
@@ -187,7 +213,7 @@ static void ReadCountAndSkip(FILE* fp, int elementSize)
 static void LoadPalettes(FILE* fp)
 {
     // 8 bit palette
-    Skip(fp, 3, 256);
+    fread(&Palette8, 3, 256, fp);
 
     // 16 bit palette
     fread(&Palette16, 4, 256, fp);
@@ -216,6 +242,8 @@ static void LoadTextureAtlases(FILE* fp)
             );
         }
 
+        //WriteToTgaFile(Format("atlas%d.tga", i), 256, 256, (uint8_t*)&buffer[0]);
+
         TexturePage[i] = LoadTextureFromMemory(buffer, 256, 256, true);
     }
 
@@ -230,25 +258,42 @@ static void LoadRooms(FILE* fp)
 
     for (int i = 0; i < NumRooms; ++i)
     {
-        Rooms[i].x = Read<int32_t>(fp);
+        Rooms[i].x = Read<int32_t>(fp) / WorldScale;
         Rooms[i].y = 0;
-        Rooms[i].z = Read<int32_t>(fp);
+        Rooms[i].z = Read<int32_t>(fp) / WorldScale;
         
         // room min/max extend
-        Read<int32_t>(fp);
-        Read<int32_t>(fp);
+        int ybottom = Read<int32_t>(fp);
+        int ytop = Read<int32_t>(fp);
 
         uint32_t size = Read<uint32_t>(fp);
         Rooms[i].Data = (int16_t*)malloc(sizeof(int16_t) * size);
         fread(Rooms[i].Data, sizeof(int16_t), size, fp);
 
         // portals
-        ReadCountAndSkip<uint16_t>(fp, 32);
+        Rooms[i].NumPortals = Read<uint16_t>(fp);
+        Rooms[i].Portals = (Tr3Portal*)malloc(sizeof(Tr3Portal) * Rooms[i].NumPortals);
+        fread(Rooms[i].Portals, sizeof(Tr3Portal), Rooms[i].NumPortals, fp);
 
         // sector data
         uint16_t NumZSectors = Read<uint16_t>(fp);
         uint16_t NumXSectors = Read<uint16_t>(fp);
         Skip(fp, 8, NumZSectors * NumXSectors);
+
+        float minx = Rooms[i].x;
+        float miny = ybottom / WorldScale;
+        float minz = Rooms[i].z;
+
+        float maxx = Rooms[i].x + (NumXSectors * 1024) / WorldScale;
+        float maxy = ytop / WorldScale;
+        float maxz = Rooms[i].z + (NumZSectors * 1024) / WorldScale;
+
+        Rooms[i].Bounds[0][0] = minx;
+        Rooms[i].Bounds[0][1] = -miny;
+        Rooms[i].Bounds[0][2] = minz;
+        Rooms[i].Bounds[1][0] = maxx;
+        Rooms[i].Bounds[1][1] = -maxy;
+        Rooms[i].Bounds[1][2] = maxz;
 
         // ambient light
         Read<int16_t>(fp);
@@ -269,7 +314,6 @@ static void LoadRooms(FILE* fp)
         {
             Rooms[i].Meshes = NULL;
         }
-        //ReadCountAndSkip<uint16_t>(fp, 20);
 
         Read<int16_t>(fp); // alternate room
         Read<int16_t>(fp); // flags
@@ -408,12 +452,31 @@ static bool LoadTombRaider3Level(const char* path)
 
     fclose(fp);
 
+    DrawInfo drawInfo;
+    if (Entities[SKYBOX].NumMeshes != 0)
+    {
+        int16_t* mesh = Meshes[Entities[SKYBOX].MeshOffset];
+        FillEntityDrawInfo(mesh, &drawInfo);
+
+        for (int i = 0; i < drawInfo.NumColoredTris; ++i)
+        {
+            Tr3TriFace* tri = &drawInfo.ColoredTris[i];
+            
+            const int16_t* v0 = drawInfo.VertexBuffer + tri->Vertices[0] * drawInfo.Stride;
+            const int16_t* v1 = drawInfo.VertexBuffer + tri->Vertices[1] * drawInfo.Stride;
+            const int16_t* v2 = drawInfo.VertexBuffer + tri->Vertices[2] * drawInfo.Stride;
+            if (v0[1] > -500) {
+                tri->Texture = 6<<8;
+            }
+        }
+    }
+
     return true;
 }
 
 bool SceneInitialize()
 {
-    if (!LoadTombRaider3Level("C:\\Program Files (x86)\\Steam\\steamapps\\common\\TombRaider (III)\\data\\RAPIDS.TR2")) {
+    if (!LoadTombRaider3Level("C:\\Program Files (x86)\\Steam\\steamapps\\common\\TombRaider (III)\\data\\TEMPLE.TR2")) {
         return false;
     }
 
@@ -427,11 +490,13 @@ bool SceneInitialize()
 
     SetCursorPos(centerX, centerY);
 
-    PlayerPos[0] = 334.603546;
-    PlayerPos[1] = 133.472733;
-    PlayerPos[2] = 310.849121;
-    Yaw = 9.095793;
-    Pitch = -0.360000;
+    FILE* fp;
+    if (!fopen_s(&fp, "start_pos.txt", "r"))
+    {
+        fscanf(fp, "%f %f %f\n", &PlayerPos[0], &PlayerPos[1], &PlayerPos[2]);
+        fscanf(fp, "%f %f\n", &Yaw, &Pitch);
+        fclose(fp);
+    }
 
     return true;
 }
@@ -443,6 +508,7 @@ void SceneDestroy()
     free(MeshData);
     for (int i = 0; i < NumRooms; ++i) {
         free(Rooms[i].Data);
+        free(Rooms[i].Portals);
         free(Rooms[i].Meshes);
     }
     free(Rooms);
@@ -515,12 +581,31 @@ static void FillEntityDrawInfo(const int16_t* data, DrawInfo* drawInfo)
     drawInfo->Stride = 3;
 }
 
-static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int16_t idx0, int16_t idx1, int16_t idx2, int16_t surfaceColorValue)
+static const vec3 DebugColors[15] =
+{
+    {1.0f, 0.0f, 0.0f},     // red
+    {0.0f, 1.0f, 0.0f},     // green
+    {0.0f, 0.0f, 1.0f},     // blue
+    {1.0f, 1.0f, 0.0f},     // yellow
+    {1.0f, 0.0f, 1.0f},     // magenta
+    {0.0f, 1.0f, 1.0f},     // cyan
+    {1.0f, 0.5f, 0.0f},     // orange
+    {0.5f, 0.0f, 1.0f},     // purple
+    {0.0f, 0.5f, 1.0f},     // sky blue
+    {0.5f, 1.0f, 0.0f},     // lime
+    {1.0f, 0.0f, 0.5f},     // pink
+    {0.0f, 0.5f, 0.0f},     // dark green
+    {0.5f, 0.25f, 0.0f},    // brown
+    {0.25f, 0.25f, 0.25f},  // gray
+    {1.0f, 1.0f, 1.0f}      // white
+};
+
+static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int16_t idx0, int16_t idx1, int16_t idx2, int16_t surfaceColorValue, bool textured)
 {
     Tr3Texture* texture = NULL;
     uint8_t* defaultColor = NULL;
     
-    if ((surfaceColorValue&0x7fff) < NumTextures)
+    if (textured)
     {
         static uint8_t DefaultColor[] ={ 255, 255, 255, 255 };
         texture = &Textures[surfaceColorValue & 0x7fff];
@@ -549,7 +634,7 @@ static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int1
 
     uint32_t baseIndex = batch.NumVertices;
 
-    vec4 pos[3];
+    vec4 posVS[3];
     vec4 color[3];
 
     int16_t idx[]{ idx0,idx1,idx2 };
@@ -562,7 +647,7 @@ static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int1
             (-vert[1] / WorldScale),
             ( vert[2] / WorldScale)
         };
-        Matrix4MulVec3(ObjectToView, tmp, 1, pos[i]);
+        Matrix4MulVec3(ObjectToView, tmp, 1, posVS[i]);
 
         uint8_t r, g, b;
         if (stride == 6) 
@@ -578,28 +663,36 @@ static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int1
             b = defaultColor[2];
         }
 
-        // fog
-        float fogStart = 60.0f;
-        float fogEnd = 100.0f;
-        float fogFactor = 1.0f;
-        /*if (pos[i][2] < fogStart) fogFactor = 1.0f;
-        else if (pos[i][2] > fogEnd) fogFactor = 0.0f;
-        else {
-            fogFactor = (fogEnd - pos[i][2]) / (fogEnd - fogStart);
-        }*/
+#if 0 // debug rooms
+        r = DebugColors[CurrentRoom % 16][0]*255;
+        g = DebugColors[CurrentRoom % 16][1]*255;
+        b = DebugColors[CurrentRoom % 16][2]*255;
+#endif
 
-        color[i][0] = (r / 255.0f) * fogFactor;
-        color[i][1] = (g / 255.0f) * fogFactor;
-        color[i][2] = (b / 255.0f) * fogFactor;
+        if (FogEnabled)
+        {
+            uint16_t z = (uint16_t)(posVS[i][2] * 256.0f);
+            uint32_t fog = 256;
+            if (z >= FOG_END) fog = 0;
+            else if (z > FOG_START) fog = 256 - ((z - FOG_START) * 256) / (FOG_END - FOG_START);
+
+            r = (r * fog) >> 8;
+            g = (g * fog) >> 8;
+            b = (b * fog) >> 8;
+        }
+
+        color[i][0] = r / 255.0f;
+        color[i][1] = g / 255.0f;
+        color[i][2] = b / 255.0f;
     }
 
 #define PUSH_VERTEX(index) do {                                   \
         assert(batch.NumVertices < MAX_BATCH_VERTICES - 1);       \
         batch.Vertices[batch.NumVertices++] =                     \
         {                                                         \
-            pos[index][0],                                        \
-            pos[index][1],                                        \
-            pos[index][2],                                        \
+            posVS[index][0],                                      \
+            posVS[index][1],                                      \
+            posVS[index][2],                                      \
             FIXED_8_8(texture->uv[idx[index]][0]) / textureView.Width, \
             FIXED_8_8(texture->uv[idx[index]][1]) / textureView.Height,\
             color[index][0], color[index][1], color[index][2]     \
@@ -616,7 +709,7 @@ static void BatchTri(const int16_t* vbuf, const uint16_t* ibuf, int stride, int1
     batch.Indices[batch.NumIndices++] = baseIndex + 2;
 }
 
-static void BatchTris(const int16_t* vertexBuffer, int stride, int numTris, const Tr3TriFace* tris)
+static void BatchTris(const int16_t* vertexBuffer, int stride, int numTris, const Tr3TriFace* tris, bool textured)
 {
     for (int i = 0; i < numTris; ++i)
     {
@@ -625,14 +718,14 @@ static void BatchTris(const int16_t* vertexBuffer, int stride, int numTris, cons
         bool doubleSided = tri->Texture & 0x8000;
 
         if (doubleSided) {
-            BatchTri(vertexBuffer, &tri->Vertices[0], stride, 0, 2, 1, tri->Texture & 0x7fff);
+            BatchTri(vertexBuffer, &tri->Vertices[0], stride, 0, 2, 1, tri->Texture, textured);
         }
 
-        BatchTri(vertexBuffer, &tri->Vertices[0], stride, 0, 1, 2, tri->Texture & 0x7fff);
+        BatchTri(vertexBuffer, &tri->Vertices[0], stride, 0, 1, 2, tri->Texture, textured);
     }
 }
 
-static void BatchQuads(const int16_t* vertexBuffer, int stride, int numQuads, const Tr3QuadFace* quads)
+static void BatchQuads(const int16_t* vertexBuffer, int stride, int numQuads, const Tr3QuadFace* quads, bool textured)
 {
     for (int i = 0; i < numQuads; ++i)
     {
@@ -642,28 +735,28 @@ static void BatchQuads(const int16_t* vertexBuffer, int stride, int numQuads, co
 
         if (doubleSided)
         {
-            BatchTri(vertexBuffer, &quad->Vertices[0], stride, 0, 2, 1, quad->Texture);
-            BatchTri(vertexBuffer, &quad->Vertices[0], stride, 0, 3, 2, quad->Texture);
+            BatchTri(vertexBuffer, &quad->Vertices[0], stride, 0, 2, 1, quad->Texture, textured);
+            BatchTri(vertexBuffer, &quad->Vertices[0], stride, 0, 3, 2, quad->Texture, textured);
         }
 
-        BatchTri(vertexBuffer, &quad->Vertices[0], stride, 0, 1, 2, quad->Texture);
-        BatchTri(vertexBuffer, &quad->Vertices[0], stride,  0, 2, 3, quad->Texture);
+        BatchTri(vertexBuffer, &quad->Vertices[0], stride, 0, 1, 2, quad->Texture, textured);
+        BatchTri(vertexBuffer, &quad->Vertices[0], stride,  0, 2, 3, quad->Texture, textured);
     }
 }
 
 static void BatchDrawInfo(const DrawInfo* drawInfo)
 {
     if (drawInfo->NumQuads > 0) {
-        BatchQuads(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumQuads, drawInfo->Quads);
+        BatchQuads(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumQuads, drawInfo->Quads, true);
     }
     if (drawInfo->NumTris > 0) {
-        BatchTris(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumTris, drawInfo->Tris);
+        BatchTris(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumTris, drawInfo->Tris, true);
     }
     if (drawInfo->NumColoredQuads > 0) {
-        BatchQuads(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumColoredQuads, drawInfo->ColoredQuads);
+        BatchQuads(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumColoredQuads, drawInfo->ColoredQuads, false);
     }
     if (drawInfo->NumColoredTris > 0) {
-        BatchTris(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumColoredTris, drawInfo->ColoredTris);
+        BatchTris(drawInfo->VertexBuffer, drawInfo->Stride, drawInfo->NumColoredTris, drawInfo->ColoredTris, false);
     }
 }
 
@@ -702,7 +795,7 @@ static rgba8 ShadePixel(float mipLevel, const Interpolants* interp, bool* discar
 static rgba8 ShadePixelAlphaTest(float mipLevel, const Interpolants* interp, bool* discard)
 {
     rgba8 color = SampleTextureLod(interp->px, interp->py, interp->u, interp->v, mipLevel);
-    if (color == 0) {
+    if (AlphaTestEnabled && color == 0) {
         *discard = true;
         return 0;
     }
@@ -766,21 +859,6 @@ static void RenderBatches()
     }
 }
 
-//static void BatchEntity(int id, int x, int y, int z)
-//{
-//    if (Entities[id].NumMeshes == 0) {
-//        return;
-//    }
-//
-//    DrawInfo drawInfo;
-//    for (int i = 0; i < Entities[id].NumMeshes; ++i)
-//    {
-//        int16_t* mesh = Meshes[Entities[id].MeshOffset+i];
-//        FillEntityDrawInfo(mesh, &drawInfo);
-//        BatchDrawInfo(x + i * 150, y, z, 0, &drawInfo);
-//    }
-//}
-
 static void UpdateAnimatedTextures()
 {
     static float frame = 0;
@@ -797,7 +875,7 @@ static void UpdateAnimatedTextures()
         int16_t* ptr = TextureAnimRecords;
         for (int i = *ptr++; i > 0; --i)
         {
-            AnimRecord* record = (AnimRecord*)ptr++;
+            const AnimRecord* record = (const AnimRecord*)ptr++;
 
             Tr3Texture tmp = Textures[record->FrameIds[0]];
             for (int j = 0; j < record->NumFrames; ++j) {
@@ -811,11 +889,110 @@ static void UpdateAnimatedTextures()
     }
 }
 
+static void DrawAABB(vec3 min, vec3 max)
+{
+    vec3 c[8] = {
+        {min[0],min[1],min[2]}, {max[0],min[1],min[2]},
+        {max[0],max[1],min[2]}, {min[0],max[1],min[2]},
+        {min[0],min[1],max[2]}, {max[0],min[1],max[2]},
+        {max[0],max[1],max[2]}, {min[0],max[1],max[2]}
+    };
+
+    vec2 p[8];
+    bool valid[8]{ 0 };
+
+    for (int i = 0; i < 8; i++)
+    {
+        vec4 clip;
+        mat4 ViewProjectionMatrix;
+        Matrix4Mul(ViewMatrix, ProjectionMatrix, ViewProjectionMatrix);
+        Matrix4MulVec3(ViewProjectionMatrix, c[i], 1, clip);
+
+        valid[i] = clip[3] > 0.0f;
+        if (!valid[i]) {
+            continue;
+        }
+
+        float ndcX = clip[0] / clip[3];
+        float ndcY = clip[1] / clip[3];
+
+        p[i][0] = (ndcX * 0.5f + 0.5f) * PJD_FB_WIDTH;
+        p[i][1] = (1.0f - (ndcY * 0.5f + 0.5f)) * PJD_FB_HEIGHT;
+    }
+
+    int e[12][2] = {
+        {0,1},{1,2},{2,3},{3,0},
+        {4,5},{5,6},{6,7},{7,4},
+        {0,4},{1,5},{2,6},{3,7}
+    };
+
+    for (int i = 0; i < 12; i++) {
+        int a = e[i][0];
+        int b = e[i][1];
+
+        if (!valid[a] || !valid[b])
+            continue;
+
+        DrawLine(p[e[i][0]][0], p[e[i][0]][1],
+                 p[e[i][1]][0], p[e[i][1]][1],
+                 0xffffffff);
+    }
+}
+
+static void DrawPlane(vec3 v0, vec3 v1, vec3 v2, vec3 v3)
+{
+    vec3 corners[4];
+    vec2 p[4];
+    bool valid[4] = { 0 };
+
+    for (int i = 0; i < 3; i++) { corners[0][i] = v0[i]; }
+    for (int i = 0; i < 3; i++) { corners[1][i] = v1[i]; }
+    for (int i = 0; i < 3; i++) { corners[2][i] = v2[i]; }
+    for (int i = 0; i < 3; i++) { corners[3][i] = v3[i]; }
+
+    mat4 ViewProjectionMatrix;
+    Matrix4Mul(ViewMatrix, ProjectionMatrix, ViewProjectionMatrix);
+
+    for (int i = 0; i < 4; i++)
+    {
+        vec4 clip;
+        Matrix4MulVec3(ViewProjectionMatrix, corners[i], 1, clip);
+
+        valid[i] = clip[3] > 0.0f;
+        if (!valid[i])
+            continue;
+
+        float ndcX = clip[0] / clip[3];
+        float ndcY = clip[1] / clip[3];
+
+        p[i][0] = (ndcX * 0.5f + 0.5f) * PJD_FB_WIDTH;
+        p[i][1] = (1.0f - (ndcY * 0.5f + 0.5f)) * PJD_FB_HEIGHT;
+    }
+
+    int edges[4][2] = { {0,1}, {1,2}, {2,3}, {3,0} };
+
+    for (int i = 0; i < 4; i++)
+    {
+        int a = edges[i][0];
+        int b = edges[i][1];
+
+        if (!valid[a] || !valid[b])
+            continue;
+
+        DrawLine(
+            p[a][0], p[a][1],
+            p[b][0], p[b][1],
+            0xffffffff
+        );
+    }
+}
+
 static void RenderScene()
 {
     UpdateAnimatedTextures();
 
     DrawInfo drawInfo;
+#if RENDER_SKY
     if (Entities[SKYBOX].NumMeshes != 0)
     {
         int16_t* mesh = Meshes[Entities[SKYBOX].MeshOffset];
@@ -832,6 +1009,7 @@ static void RenderScene()
 
         BatchDrawInfo(&drawInfo);
     }
+#endif // RENDER_SKY
 
     SetDepthWrite(false);
     RenderBatches();
@@ -839,17 +1017,21 @@ static void RenderScene()
     // not ideal :)
     InitializeBatches();
 
-    for (int i = 0; i < NumRooms; ++i) 
+    for (int i = 0; i < NumRooms; ++i)
     {
+        CurrentRoom = i;
         Tr3Room* room = &Rooms[i];
         FillRoomDrawInfo(room->Data, &drawInfo);
 
-        CreateMatrixTransform(room->x / WorldScale, room->y / WorldScale, room->z / WorldScale, ObjectToWorld);
+        CreateMatrixTransform(room->x, room->y, room->z, ObjectToWorld);
         Matrix4Mul(ObjectToWorld, ViewMatrix, ObjectToView);
 
+#if RENDER_WORLD
         // batch room geomtry
         BatchDrawInfo(&drawInfo);
+#endif
 
+#if RENDER_ENTITIES
         for (int j = 0; j < room->NumMeshes; ++j)
         {
             mat4 MatObjOrient;
@@ -868,10 +1050,30 @@ static void RenderScene()
                 BatchDrawInfo(&drawInfo);
             }
         }
+#endif
     }
 
     SetDepthWrite(true);
     RenderBatches();
+
+    //RasterMode2D(false);
+    ////for (int i = 0; i < sizeof(roomList) / sizeof(int); ++i)
+    //{
+    //    Tr3Room& room = Rooms[roomList[0]];
+
+    //    //DrawAABB(room.Bounds[0], room.Bounds[1]);
+
+    //    for (int p = 0; p < room.NumPortals; ++p)
+    //    {
+    //        Tr3Portal& portal = room.Portals[p];
+    //        vec3 a = { room.x + portal.ax / WorldScale, -portal.ay / WorldScale, room.z + portal.az / WorldScale };
+    //        vec3 b = { room.x + portal.bx / WorldScale, -portal.by / WorldScale, room.z + portal.bz / WorldScale };
+    //        vec3 c = { room.x + portal.cx / WorldScale, -portal.cy / WorldScale, room.z + portal.cz / WorldScale };
+    //        vec3 d = { room.x + portal.dx / WorldScale, -portal.dy / WorldScale, room.z + portal.dz / WorldScale };
+    //        DrawPlane(a, b, c, d);
+    //    }
+    //}
+    //RasterMode2D(true);
 }
 
 static void MouseDelta(vec2i out)
@@ -931,8 +1133,11 @@ static void HandleInput()
 
     if (Thirteen::GetKey('T') && !Thirteen::GetKeyLastFrame('T'))
     {
-        Trace(Format("PlayerPos[0]=%f;\nPlayerPos[1]=%f;\nPlayerPos[2]=%f;\n", PlayerPos[0], PlayerPos[1], PlayerPos[2]));
-        Trace(Format("Yaw=%f;\nPitch=%f;", Yaw, Pitch));
+        FILE* fp;
+        fopen_s(&fp, "start_pos.txt", "w");
+        fprintf_s(fp, "%f %f %f\n", PlayerPos[0], PlayerPos[1], PlayerPos[2]);
+        fprintf_s(fp, "%f %f\n", Yaw, Pitch);
+        fclose(fp);
     }
 
     if (Thirteen::GetKey('W'))
@@ -962,21 +1167,26 @@ static void HandleInput()
     if (Thirteen::GetKey('L') && !Thirteen::GetKeyLastFrame('L')) {
         LightmapsOnly = !LightmapsOnly;
     }
+    if (Thirteen::GetKey('K') && !Thirteen::GetKeyLastFrame('K')) {
+        AlphaTestEnabled = !AlphaTestEnabled;
+    }
+    if (Thirteen::GetKey('F') && !Thirteen::GetKeyLastFrame('F')) {
+        FogEnabled = !FogEnabled;
+    }
 
     vec3 target;
     Vec3Add(PlayerPos, forward, target);
 
     CreateMatrixLookAt(PlayerPos, target, up, ViewMatrix);
 
-    CreateMatrixPerspectiveFovLH(45.0f, PJD_FB_WIDTH / (float)PJD_FB_HEIGHT, 0.1, 300, ProjectionMatrix);
+    CreateMatrixPerspectiveFovLH(45.0f, PJD_FB_WIDTH / (float)PJD_FB_HEIGHT, 3, 300, ProjectionMatrix);
 }
 
 void SceneRenderFrame()
 {
     HandleInput();
 
-    Clear(RGB(0, 0, 0));
-    SetDrawMode(DrawMode::Solid);
+    Clear(RGB(255, 255, 0));
 
     InitializeBatches();
     RenderScene();
@@ -984,7 +1194,7 @@ void SceneRenderFrame()
 
 void SceneRenderOverlay2D()
 {
-    WriteString(Format("%f %f %f", PlayerPos[0] * WorldScale, PlayerPos[1] * WorldScale, PlayerPos[2] * WorldScale), 0, 700);
+    //WriteString(Format("Current Room=%d", CurrentRoom), 0, 700);
 }
 
 #endif
